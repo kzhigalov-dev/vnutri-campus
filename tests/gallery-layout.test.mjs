@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {prepareGalleryLayout} from '../public/js/gallery-layout.js';
+import {createWalkMap} from '../public/js/walk-navigation.js';
+const read=n=>JSON.parse(readFileSync(new URL(`../public/data/${n}.json`,import.meta.url)));
+test('gallery preparation leaves archive immutable and adds internal, consistently labelled open doors',()=>{const data=read('floor-geometry'),spaces=read('floor-spaces');for(const source of data.floors){const before=JSON.stringify(source),layout=prepareGalleryLayout(source,spaces.floors.find(f=>f.floor===source.floor).spaces);assert.equal(JSON.stringify(source),before);assert.ok(layout.doors.length>=5);const map=createWalkMap(layout.floor);for(const door of layout.doors){assert.match(door.label,new RegExp(`^П${source.floor}\\.`));assert.ok(door.position.every(Number.isFinite));assert.ok(map.valid(door.position),`${door.label} opening must be clear`);assert.ok(map.segmentClear(door.position.map((v,i)=>v-door.normal[i]*.24),door.position.map((v,i)=>v+door.normal[i]*.24)),`${door.label} can cross portal`);}assert.ok(layout.floor.walls.every(w=>w.every(Number.isFinite)));}});
+test('short scan fragments are removed while a real long partition remains',()=>{const f={floor:1,imageWidth:80,imageHeight:20,footprint:[[0,0],[80,0],[80,20],[0,20]],insets:[],stairs:[],walls:[[20,0,20,20,.2],[10,10,10.1,10,.1],[20.03,0,20.03,20,.2]]};const result=prepareGalleryLayout(f,[]);assert.equal(result.floor.walls.length,1);assert.equal(result.floor.walls[0][0],20);});

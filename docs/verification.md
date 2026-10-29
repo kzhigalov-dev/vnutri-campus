@@ -87,3 +87,13 @@
 - Rendered room labels are decluttered against stair labels and occluded by walls in walk mode. Derived149 zones are13/40/40/40/16 per floor. Source overlay diagnostics retained and inspected; modern room numbers remain unbound. No actual venue availability or modern accessibility is inferred.
 - Browser QA uses local preview of the packaged source; private publication is verified by the native deployment result. Physical phone/multitouch, GPU-loss injection and actual email delivery were not tested this turn; no mail service exists. Booking logic was unchanged and its automated regression checks pass.
 - Screenshots: docs/screenshots/immersive/spatial-floor.png, walk.png and mobile-floor.png.
+
+
+## 2026-10-30 — campus gallery design
+
+-56 tests pass. Added pure-layout checks leave source immutable, retain real long partitions, clean short/duplicate fragments, and verify clear crossings through every accepted illustrative portal on allfive floors.125 doors (9/37/32/35/12), cleanup119/78/59/82/53 trace fragments. Original source geometry/image hash tests still pass. TypeScript check passes.
+- Renderer and walk collision/minimap share the prepared walls. Source2D is unchanged. Decorative poles/posters/signs ignore ground picking; loaded furniture has obstacle bounds. Gallery owns and disposes its textures/materials/geometry on floor change; optional assets fall back after3500ms.
+- Independent review found optional-model stall, rejected candidate doors leaving cuts, and a missing-model display topper without collision. All fixed and re-reviewed; no material findings remain.
+- Browser1280×720 and390×844: inspected eye-level floor4 and2, matching door/model labels, colored minimap/stripes, two-sided overhead signs, material/ceiling/poster rendering; keyboard and held mobile direction move player. Allfive floors load with correct zone/door/prop counts, scan of floor5 remains correct, no console warnings/errors.
+- Booking new hero/catalog/form render, free local save then cancellation succeeds and releases place; test record cancelled. Booking and about on390px have scrollWidth=clientWidth=390. Modern room coordinates and live booking/email remain unconfigured. No physical phone, real-campus routes or forced GPU loss tested.
+- Screenshots: docs/screenshots/gallery/{floor,mobile-walk,booking,building}.png. All decorative content is illustrative, original archive retained separately.

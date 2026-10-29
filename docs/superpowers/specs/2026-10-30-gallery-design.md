@@ -1,0 +1,8 @@
+# Campus gallery design
+User authorizes autonomous visual redesign and illustrative decor beyond historical accuracy. Main problem: uniform walls and noisy partitions make eye-level navigation illegible.
+
+Design: campus as design exhibition. Porcelain #e4e5df, midnight #172630, cobalt #3978b9, burnt orange #d57a47, sage #729f88, brushed brass #baa17b. Keep Manrope UI and Oswald architectural signage. Fullscreen model remains primary; supporting pages use generous light surfaces with the same colored exhibition graphics.
+
+Deliverables: clean short/duplicate trace artifacts into a separate illustrative interior, retain original JSON and scan. Add physically open door portals with matching model indexes, signage and handles; use same prepared walls for rendering and navigation. Do not assign unsupported current room IDs. Three colored wings, floor-number landmarks, wall exhibitions/posters, glass display cases, indoor plants and seating where circulation remains free. Decor/furniture must not block navigation unnoticed. Doors and wall decorations visible at eye level, lower or hidden in cutaway overview. Better surface/light response; exterior entrance, windows, pavement and courtyard landscape. Finally refine booking/about/email/cancel styling without changing booking behavior.
+
+Implementation calls: authored canvas textures for exhibition graphics, source-derived illustrative door locations, local CC0 assets where useful. Keep both model/door indices and source disclosure. Props load with bounded fallback and stale-floor guard; dispose model materials/textures. No per-frame decorative animation or new runtime dependency. Preserve same owner-private Site and booking demo.

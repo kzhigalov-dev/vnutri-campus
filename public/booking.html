@@ -6,7 +6,7 @@
 <meta name="description" content="Студенческий прототип: исследуй пространства 4-го этажа Вознесенского, 44–46 и оформи учебную бронь места для самостоятельной работы.">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./styles.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script><script type="module" src="./js/app.js"></script>
-<link rel="stylesheet" href="./experience.css"></head>
+<link rel="stylesheet" href="./experience.css"><link rel="stylesheet" href="./gallery.css"></head>
 <body class="booking-page"><svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
 <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></symbol>
@@ -22,7 +22,7 @@
 <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
 </defs></svg>
 <header class="booking-header wrap"><a class="mini-brand" href="./index.html" aria-label="Внутри — к зданию">внутри<span>.</span><small>ПРОМТЕХДИЗАЙН</small></a><a href="./index.html">← К зданию</a><button class="my-bookings" id="bookings-open">Мои брони <b id="booking-count">0</b></button></header>
-<main class="wrap booking-main"><div class="booking-intro"><p class="eyebrow">ВРЕМЯ ДЛЯ СВОИХ ИДЕЙ · 4-Й ЭТАЖ</p><h1>Найди своё место.</h1><p>Компьютер для проекта, стол для команды или тишина для себя.<br>Выбери пространство, время и свободные места. Всё бесплатно.</p></div><div class="service-status" id="service-status" role="status">Проверяем режим бронирования…</div><div id="storage-warning" class="warning" role="alert" hidden></div><div class="booking-layout"><div class="booking-catalog"><form id="filters" class="filters" aria-label="Фильтры пространств">
+<main class="wrap booking-main"><div class="booking-intro"><p class="eyebrow">ВРЕМЯ ДЛЯ СВОИХ ИДЕЙ · 4-Й ЭТАЖ</p><h1>Найди своё место.</h1><p>Компьютер для проекта, стол для команды или тишина для себя.<br> Выбери пространство, время и свободные места. Всё бесплатно.</p></div><div class="service-status" id="service-status" role="status">Проверяем режим бронирования…</div><div id="storage-warning" class="warning" role="alert" hidden></div><div class="booking-layout"><div class="booking-catalog"><form id="filters" class="filters" aria-label="Фильтры пространств">
 <label class="search-field"><svg class="icon"><use href="#i-search"/></svg><span class="sr-only">Найти пространство</span><input id="room-search" type="search" placeholder="Номер или название" autocomplete="off"></label>
 <label class="select-filter"><span class="sr-only">Тип пространства</span><select id="category"><option value="all">Все пространства</option><option value="computer">С компьютером</option><option value="quiet">Тихая работа</option><option value="team">Для команды</option></select></label>
 
