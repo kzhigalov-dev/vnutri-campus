@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rooms } from '../dist/js/data.js';
-import { todayMoscow,addDays,filterRooms,occupiedSeats,createBooking,cancelBooking,loadBookings,saveBookings,validateRequest,STORAGE_KEY } from '../dist/js/model.js';
+import { rooms } from '../public/js/data.js';
+import { todayMoscow,addDays,filterRooms,occupiedSeats,createBooking,cancelBooking,loadBookings,saveBookings,validateRequest,STORAGE_KEY } from '../public/js/model.js';
 const TODAY='2026-10-29';
 const request=(extra={})=>({roomId:'r459',seatIds:[1],date:TODAY,start:13,hours:2,...extra});
 const make=(bookings=[],extra={})=>createBooking(bookings,request(extra),TODAY);
@@ -9,7 +9,7 @@ const storage=(raw=null)=>({value:raw,getItem(){return this.value},setItem(k,v){
 test('catalog has 8 areas and 64 seats; real evidence separate from proposed',()=>{assert.equal(rooms.length,8);assert.equal(rooms.reduce((n,r)=>n+r.seatCount,0),64);assert.equal(rooms.filter(r=>!r.proposed).length,5)});
 test('Moscow date and calendar arithmetic around midnight/year/leap day',()=>{assert.equal(todayMoscow(new Date('2026-10-28T22:00:00Z')),TODAY);assert.equal(addDays('2026-12-31',1),'2027-01-01');assert.equal(addDays('2028-02-28',1),'2028-02-29')});
 test('filters combine category, budget, search and availability',()=>{const list=filterRooms({category:'computer',maxPrice:40,query:'459'},[],request());assert.deepEqual(list.map(r=>r.id),['r459']);assert.equal(filterRooms({maxPrice:-1},[],request()).length,0);assert.equal(filterRooms({query:'несуществующий'},[],request()).length,0)});
-test('atomic multi-seat booking, exact total, unique id',()=>{const r=make([],{seatIds:[1,4]});assert.equal(r.error,null);assert.equal(r.bookings.length,1);assert.equal(r.booking.total,160);assert.deepEqual(r.booking.seatIds,[1,4]);assert.equal(r.booking.date,TODAY)});
+test('atomic multi-seat booking, exact total, unique id',()=>{const r=make([],{seatIds:[1,4]});assert.equal(r.error,null);assert.equal(r.bookings.length,1);assert.equal(r.booking.total,0);assert.deepEqual(r.booking.seatIds,[1,4]);assert.equal(r.booking.date,TODAY)});
 test('duplicate and overlap rejected; adjacent and other-day bookings allowed',()=>{const first=make();assert.ok(make(first.bookings).error);assert.ok(make(first.bookings,{start:14}).error);assert.ok(make(first.bookings,{start:15,hours:1}).booking);assert.ok(make(first.bookings,{date:addDays(TODAY,1)}).booking);assert.ok(make(first.bookings,{roomId:'r462'}).booking)});
 test('initial demo reservations are unavailable; partial selection must not create any record',()=>{assert.ok(occupiedSeats('r459',TODAY,13,2,[]).has(2));const r=make([],{seatIds:[1,2]});assert.ok(r.error);assert.equal(r.bookings.length,0);assert.ok(make([],{seatIds:[2],start:15,hours:1}).booking)});
 test('only exact integer numeric inputs accepted; bounded end time',()=>{for(const hours of ['',0,-1,1.5,5,'NaN',Infinity,{},null])assert.ok(make([],{hours}).error);for(const start of ['',8,20.5,21,Infinity,null])assert.ok(make([],{start}).error);assert.ok(make([],{start:20,hours:2}).error);assert.ok(make([],{start:20,hours:1}).booking)});
@@ -28,3 +28,7 @@ test('capacity is enforced before mutation and persistence; 250 records remain r
  assert.ok(make(bookings,{date:addDays(TODAY,4),start:9,hours:1}).error);
  const previous=s.value;assert.ok(saveBookings(s,[...bookings,extra]).error);assert.equal(s.value,previous);
 });
+
+test('legacy paid records migrate to free without losing reservations',()=>{const b=make().booking;const legacy={...b,total:40*b.hours*b.seatIds.length};const result=loadBookings(storage(JSON.stringify({version:1,bookings:[legacy]})),TODAY);assert.equal(result.error,null);assert.equal(result.bookings[0].total,0);assert.equal(result.bookings[0].id,b.id)});
+test('all catalog prices are zero',()=>assert.ok(rooms.every(r=>r.price===0)));
+test('live availability filters use server slots without demo seeds',()=>{const slot=request({roomId:'reading'});assert.equal(filterRooms({freeOnly:true},[],slot,false).length,8);const full={roomId:'r459',date:TODAY,start:13,hours:2,seatIds:[1,2,3,4,5,6,7,8]};assert.ok(!filterRooms({freeOnly:true},[full],slot,false).some(r=>r.id==='r459'))});

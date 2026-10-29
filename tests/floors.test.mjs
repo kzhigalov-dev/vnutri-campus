@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {floors,floorByNumber,changeFloor} from '../dist/js/floors.js';
+import {floors,floorByNumber,changeFloor} from '../public/js/floors.js';
 test('five real archived floor sheets have distinct page and asset mappings',()=>{assert.deepEqual(floors.map(f=>f.number),[1,2,3,4,5]);assert.deepEqual(floors.map(f=>f.page),[319,320,321,322,323]);assert.equal(new Set(floors.map(f=>f.plan)).size,5);assert.ok(floors.every(f=>f.year===2012));assert.equal(floorByNumber(5).attic,true)});
 test('floor change clears transient room state, preserves saved bookings and only floor4 supports pilot',()=>{const b=[{id:'saved'}];const s={floor:4,roomId:'r459',seatIds:[1],success:{id:'done'},bookings:b};const n=changeFloor(s,2);assert.equal(n.floor,2);assert.equal(n.roomId,null);assert.deepEqual(n.seatIds,[]);assert.equal(n.success,null);assert.equal(n.bookings,b);assert.equal(floorByNumber(2).booking,false);assert.equal(floorByNumber(4).booking,true);assert.equal(s.roomId,'r459')});
 test('invalid floors are ignored; repeated selection preserves state',()=>{const s={floor:4,roomId:'r459',seatIds:[1]};for(const f of [0,6,NaN,2.5,'x',null])assert.equal(changeFloor(s,f),s);assert.equal(changeFloor(s,4),s);assert.equal(changeFloor(s,'2').floor,2)});

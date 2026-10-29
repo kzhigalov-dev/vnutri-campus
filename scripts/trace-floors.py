@@ -47,7 +47,7 @@ def merge(lines):
 
 out={"version":1,"year":2012,"method":"Source-image structural line tracing; manually checked footprint, annotation mask and stair locations. Heights/details illustrative. Not a surveyed BIM.","floors":[]}
 for f,poly in FOOTPRINTS.items():
-    path=ROOT/f'dist/assets/floor{f}-archive-plan.webp';img=np.array(Image.open(path).convert('RGB'));h,w=img.shape[:2]
+    path=ROOT/f'public/assets/floor{f}-archive-plan.webp';img=np.array(Image.open(path).convert('RGB'));h,w=img.shape[:2]
     gray=cv2.cvtColor(img,cv2.COLOR_RGB2GRAY);mask=np.zeros((h,w),np.uint8);cv2.fillPoly(mask,[np.array(poly,np.int32)]+[np.array(p,np.int32) for p in INSETS.get(f,[])],255)
     expanded=cv2.dilate(mask,np.ones((7,7),np.uint8))
     bw=((gray<225).astype(np.uint8)*255)&expanded
@@ -75,4 +75,4 @@ for f,poly in FOOTPRINTS.items():
     for x,y,a,b in STAIRS[f]:draw.rectangle((x,y,x+a,y+b),outline=(30,130,250,255),width=3)
     overlay.resize((1738,round(h/2))).save(ROOT/f'research/voznesensky-44-46/traces/floor{f}-overlay.png')
     print(f,len(walls),'wall segments')
-(ROOT/'dist/data/floor-geometry.json').write_text(json.dumps(out,separators=(',',':')))
+(ROOT/'public/data/floor-geometry.json').write_text(json.dumps(out,separators=(',',':')))

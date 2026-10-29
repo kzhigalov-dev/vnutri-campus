@@ -58,3 +58,13 @@
 Проверены быстрые переходы 1→3→2→4→5→1: заголовок и готовая модель первого этажа совпадают, canvas остаётся один. Также проверены 3D→чертёж→150%→3D, вид сверху, наложение, низкие/высокие стены и масштаб. На ширине 390px нет переполнения страницы; увеличение и перенос стрелками работают. Вычисленный `touch-action:none` устраняет конфликт OrbitControls со скроллом. Физические мультитач-жесты реального телефона не тестировались.
 
 Бронирование в 462 мест 1/3 на два часа создаёт запись 240 ₽, восстанавливается после reload и отменяется. Тестовая запись отменена. Консоль ошибок и предупреждений пуста. Замечания независимого ревью исправлены: восстановлены диагональные стены и устранён конфликт touch-action. Принудительная потеря GPU не воспроизводилась; код переводит просмотр на исходный 2D.
+
+## 2026-10-30 — immersive explorer and free booking
+
+- 36 Node tests pass: local free reservations, legacy totals migrated to0 without lost records, source image hashes, five separate geometries, server D1 unique-slot atomicity, owner isolation, idempotency, email failure/uncertainty, GET cancellation safety, signed token cancellation, invalid payloads, stale availability responses, live availability without demo seeds. Server tests use the actual Drizzle SQL in in-memory SQLite with a D1 adapter.
+- TypeScript check `npx tsc --noEmit` passed. Sites production build passed. D1 migration applied to local preview database. No mail provider is configured and no real email was sent.
+- Browser QA at1065×924 and390×844: fullscreen building, compact menu and source link, five distinct floor models (walls412/253/264/288/175; furniture24/35/29/30/8), original2D plan, stair labels, source directory22records, no horizontal overflow.
+- Free local booking: empty seat selection shows error; selected seat saves with costfree; email preview renders and saysnot sent; cancellation link opens confirmation; confirmed cancellation removes reservation and frees place; another booking survives page reload and can be cancelled in My bookings. Both test records cancelled.
+- Independent reviewer identified live filter using demo occupancy and stale response date race. Both corrected with regression tests. No additional material findings.
+- Screenshots: docs/screenshots/immersive/building.png and email.png.
+- Current modern room coordinates remain unknown after extra official-source/portfolio search. No guessed contemporary labels or bookable room polygons placed on archive geometry. Current wall/stair state is not surveyed.

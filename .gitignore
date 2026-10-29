@@ -4,3 +4,14 @@ node_modules/
 .openai/*.tar.gz
 research/**/sources/
 research/**/previews/
+
+dist/
+.sites-runtime/
+.wrangler/
+.vinext/
+.env
+.env.local
+.dev.vars
+
+.next/
+*.tsbuildinfo

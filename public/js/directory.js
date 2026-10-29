@@ -1,0 +1,6 @@
+import {escapeHTML as e} from './email-template.js';
+const search=document.getElementById('directory-search'),list=document.getElementById('directory-list');
+const statuses={floor_explicit:'4-й этаж указан в документе',address_documented:'Адрес найден; положение уточняется',conflicting:'Источники расходятся',historical:'Историческое упоминание 2021 года',needs_verification:'Требуется уточнение',overlapping_assignments:'Несколько назначений в источниках'};
+let data;
+function render(){const q=search.value.trim().toLocaleLowerCase('ru');const rows=data.rooms.filter(r=>(r.number+' '+r.label).toLocaleLowerCase('ru').includes(q));list.innerHTML=rows.length?rows.map(r=>`<article class="directory-entry"><strong>${e(r.number)}</strong><div><h3>${e(r.label)}</h3><p>${e(statuses[r.evidence_status])}</p>${r.verification_note?`<p>${e(r.verification_note)}</p>`:''}<a href="${e(data.sources[r.source_ids[0]].url)}" target="_blank" rel="noopener">Источник ↗</a></div></article>`).join(''):'<p>По этому запросу кабинетов не найдено.</p>';}
+try{const response=await fetch('./data/directory.json');if(!response.ok)throw Error();data=await response.json();render();search.addEventListener('input',render)}catch{list.textContent='Не удалось загрузить справочник. Обнови страницу.'}

@@ -1,0 +1,11 @@
+# Building explorer and free booking
+
+User direction: fullscreen evening building, enter individual archive-derived floors, room labels and correct geometry; bookable rooms distinguished. Booking moves to a dedicated page; all reservations free. Email confirmation includes cancellation.
+
+Decisions made by implementer: retain vanilla frontend and Three.js, migrate static assets from dist to public under the supported Sites Vinext Worker for D1/API behavior. Preserve Site identity and private audience. Homepage contains only explorer chrome, compact floor selector, menu and booking link. Reading and sources live in menu/about page. Booking has a separate catalog and explicit local-demo mode until mail is configured.
+
+No mail provider/domain exists. Prepare D1 reservations, authenticated create/list/cancel, Resend transport and an escaped responsive email with secure cancellation token. Production creates are disabled until MAIL_FROM, RESEND_API_KEY and SITE_URL are configured. No email sent claim without provider acceptance. Email recipient is authenticated account email, not arbitrary third parties. Local demo never sends email; a preview is explicitly labeled. GET cancellation only displays details, POST performs cancellation; token stored hashed, no access to another owner's bookings. Database unique slot constraints prevent double booking.
+
+Modern room positions are unverified. Search official published material once more; archive IDs may be shown only as archive IDs. Never place current room numbers or bookable highlights on guessed coordinates. Expose room binding as an explicit evidence-gated data layer. If modern mapping is still absent, say so in sources and booking page. Keep five distinct wall/stair geometries and original scan comparison.
+
+Acceptance: main screen model fills viewport, compact menu is keyboard usable; all 5 floors open in 3D/scan; booking catalog/form separate and free; old browser records migrate without loss; demo cancellation works; email preview accurately states demo; real backend disabled without config; configured backend validates authenticated owner, bounded dates/seats, atomic overlaps and cancellation; build/test pass and publish same private Site.
