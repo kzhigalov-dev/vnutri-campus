@@ -1,0 +1,497 @@
+{
+  "checked_at": "2026-10-29",
+  "building": {
+    "address": "Санкт-Петербург, Вознесенский проспект, 44–46",
+    "schedule_code": "В",
+    "target_floor": 4,
+    "floorplan_found": true,
+    "historical_floorplan_found": true,
+    "current_floorplan_verified": false
+  },
+  "sources": {
+    "program": {
+      "url": "https://sutd.ru/sveden/oop/09.02.13-co.pdf",
+      "title": "Образовательная программа 09.02.13",
+      "date": "2025-05-20",
+      "locator": "Раздел 7.1, печатные страницы 18–20",
+      "local_file": "sources/program-09.02.13.pdf"
+    },
+    "structure": {
+      "url": "https://sutd.ru/sveden/struct/",
+      "title": "Структура университета",
+      "date": null,
+      "local_file": "sources/structure.html"
+    },
+    "iita": {
+      "url": "https://sutd.ru/iita/contacts/",
+      "title": "Контакты ИИТА",
+      "date": null,
+      "local_file": "sources/iita-contacts.html"
+    },
+    "kit": {
+      "url": "https://kit.sutd.ru/about/contacts/",
+      "title": "Контакты кафедры ИТ",
+      "date": null,
+      "local_file": "sources/kit-contacts.html"
+    },
+    "scnit": {
+      "url": "https://kit.sutd.ru/about/computers-classes/scnit/",
+      "title": "СЦНИТ",
+      "date": null
+    },
+    "rinpo": {
+      "url": "https://sutd.ru/universitet/staff/person/19_82_13725",
+      "title": "Контакты документоведа РИНПО",
+      "date": null,
+      "local_file": "sources/room-419.html"
+    },
+    "conference": {
+      "url": "https://sutd.ru/novosti_i_obyavleniya/announces/18026/",
+      "title": "Конференция ноября 2021 года",
+      "date": "2021-11",
+      "note": "Историческое подтверждение; не текущая функция"
+    },
+    "modernization": {
+      "url": "https://sutd.ru/novosti_i_obyavleniya/announces/24689/",
+      "title": "Проект модернизации кампуса",
+      "date": "2024-06-17",
+      "local_file": "sources/modernization.html"
+    },
+    "photos": {
+      "url": "https://kit.sutd.ru/about/computers-classes/",
+      "title": "Фото компьютерных классов",
+      "date": null,
+      "local_file": "sources/kit-classes.html"
+    },
+    "upgrade": {
+      "url": "https://kit.sutd.ru/news/department_upgrade/",
+      "title": "Обновление мультимедиа",
+      "date": "2026-04-26"
+    },
+    "accessibility": {
+      "url": "https://sutd.ru/education/ovz/",
+      "title": "Доступная среда"
+    },
+    "passport_a": {
+      "url": "https://sutd.ru/upload/iblock/287/Pasport_voznes_a.pdf",
+      "title": "Паспорт доступности, литер А",
+      "date": null,
+      "local_file": "sources/passport-a.pdf",
+      "note": "Скан с мероприятиями 2017–2030; не актуальный план этажа"
+    },
+    "passport_b": {
+      "url": "https://sutd.ru/upload/iblock/fef/Pasport_voznes_b.pdf",
+      "title": "Паспорт доступности, литер Б",
+      "date": null,
+      "local_file": "sources/passport-b.pdf",
+      "note": "Скан; по описанию одноэтажное строение"
+    },
+    "heritage": {
+      "url": "https://saintcapybaras.com/Home/GetStateExamination/11435?page=102#page=322",
+      "title": "Копия историко-культурной экспертизы от 26.10.2023",
+      "date": "2023-10-26",
+      "locator": "Приложение10, PDF страница322; поэтажный план с заверением2012",
+      "local_file": "sources/heritage-2023.pdf",
+      "note": "Архивная геометрия; нумерация БТИ не сопоставлена с текущими кабинетами"
+    }
+  },
+  "rooms": [
+    {
+      "id": "voz-400",
+      "number": "400",
+      "label": "Кафедра интеллектуальных систем и защиты информации",
+      "source_ids": [
+        "structure",
+        "iita"
+      ],
+      "evidence_status": "conflicting",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "alternative_room": "460"
+    },
+    {
+      "id": "voz-404",
+      "number": "404",
+      "label": "Кафедра социальной работы и права",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-411",
+      "number": "411",
+      "label": "Аудитория, использованная для конференции",
+      "source_ids": [
+        "conference"
+      ],
+      "evidence_status": "historical",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "verification_note": "Указана как 4-й этаж в объявлении 2021 года; текущая функция неизвестна"
+    },
+    {
+      "id": "voz-415",
+      "number": "415",
+      "label": "РИНПО; образовательный региональный центр",
+      "source_ids": [
+        "structure",
+        "rinpo"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-419",
+      "number": "419",
+      "label": "Документоведение РИНПО",
+      "source_ids": [
+        "rinpo"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "verification_note": "Карточка сотрудника может быть устаревшей"
+    },
+    {
+      "id": "voz-420",
+      "number": "420",
+      "label": "Инженерное материаловедение и метрология",
+      "source_ids": [
+        "iita"
+      ],
+      "evidence_status": "needs_verification",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "verification_note": "В общей структуре кафедре соответствуют 300, 304; страница ИИТА включает 420"
+    },
+    {
+      "id": "voz-435",
+      "number": "435",
+      "label": "СЦНИТ / материаловедение и товарная экспертиза",
+      "source_ids": [
+        "structure",
+        "scnit"
+      ],
+      "evidence_status": "overlapping_assignments",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "verification_note": "Номер указан у двух подразделений; совместное использование или устаревшая запись не выяснены"
+    },
+    {
+      "id": "voz-436",
+      "number": "436",
+      "label": "СЦНИТ",
+      "source_ids": [
+        "structure",
+        "scnit"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-437",
+      "number": "437",
+      "label": "Материаловедение и товарная экспертиза",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-439",
+      "number": "439",
+      "label": "Кафедра общественных наук",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-440",
+      "number": "440",
+      "label": "Кафедра общественных наук",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-446",
+      "number": "446",
+      "label": "Химические технологии им. А. А. Хархарова",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-452",
+      "number": "452",
+      "label": "Лекционная аудитория",
+      "source_ids": [
+        "program"
+      ],
+      "evidence_status": "floor_explicit",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-459",
+      "number": "459",
+      "label": "Лаборатория информационных систем",
+      "source_ids": [
+        "program"
+      ],
+      "evidence_status": "floor_explicit",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "computer_workplaces": 20
+    },
+    {
+      "id": "voz-460",
+      "number": "460",
+      "label": "Кафедра интеллектуальных систем и защиты информации",
+      "source_ids": [
+        "iita",
+        "structure"
+      ],
+      "evidence_status": "conflicting",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "alternative_room": "400"
+    },
+    {
+      "id": "voz-462",
+      "number": "462",
+      "label": "Лаборатория компьютерной графики",
+      "source_ids": [
+        "program"
+      ],
+      "evidence_status": "floor_explicit",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "computer_workplaces": 29
+    },
+    {
+      "id": "voz-466",
+      "number": "466",
+      "label": "Лаборатория вычислительной техники",
+      "source_ids": [
+        "program"
+      ],
+      "evidence_status": "floor_explicit",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "computer_workplaces": {
+        "min": 12,
+        "max": 15
+      }
+    },
+    {
+      "id": "voz-467",
+      "number": "467",
+      "label": "Кафедра менеджмента",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-469",
+      "number": "469",
+      "label": "Кафедра менеджмента",
+      "source_ids": [
+        "structure"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-475",
+      "number": "475",
+      "label": "Кафедра информационных технологий",
+      "source_ids": [
+        "structure",
+        "iita",
+        "kit"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    },
+    {
+      "id": "voz-484",
+      "number": "484",
+      "label": "Лаборатория веб-дизайна и приложений",
+      "source_ids": [
+        "program"
+      ],
+      "evidence_status": "floor_explicit",
+      "documented_floor": 4,
+      "candidate_floor": 4,
+      "floor_basis": "explicit",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null,
+      "computer_workplaces": 30
+    },
+    {
+      "id": "voz-489",
+      "number": "489",
+      "label": "Кафедра информационных технологий",
+      "source_ids": [
+        "structure",
+        "iita",
+        "kit"
+      ],
+      "evidence_status": "address_documented",
+      "documented_floor": null,
+      "candidate_floor": 4,
+      "floor_basis": "inferred_from_room_number_not_verified",
+      "geometry": null,
+      "entrance": null,
+      "booking_available": null
+    }
+  ],
+  "department_groups": [
+    {
+      "name": "Цифровые и аддитивные технологии",
+      "room_notation": "452–463",
+      "source_ids": [
+        "structure",
+        "iita"
+      ],
+      "note": "Запись диапазоном; не означает подтверждение каждой аудитории или её положения"
+    },
+    {
+      "name": "Кафедра ИТ",
+      "room_notation": "475–489",
+      "source_ids": [
+        "kit"
+      ],
+      "note": "На других официальных страницах указаны 475 и 489. Не разворачивать диапазон в список комнат."
+    }
+  ],
+  "unlocated_spaces": [
+    {
+      "name": "VK Education",
+      "floor": 4,
+      "status": "planned_in_2024",
+      "source_ids": [
+        "modernization"
+      ]
+    },
+    {
+      "name": "Зона отдыха цифровых и аддитивных технологий",
+      "floor": 4,
+      "status": "planned_in_2024",
+      "source_ids": [
+        "modernization"
+      ]
+    }
+  ],
+  "unknowns": [
+    "Точная актуальная геометрия этажа; архивный план2012 найден",
+    "Положение дверей, лестниц, лифтов и санузлов",
+    "Какому крылу и литере относится каждая аудитория",
+    "Текущий режим доступа и расписание",
+    "Статус реализации карты 2024 года",
+    "Возможность реального бронирования"
+  ]
+}
