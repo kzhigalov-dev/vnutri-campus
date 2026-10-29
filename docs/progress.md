@@ -1,4 +1,5 @@
 # Progress — campus-booking 2026-10-29
+Current addition: floor-models spec/plan. Five unique plan-derived 3D interiors implemented; reusable renderer, load revision guard, source overlay and 2D fallback. Wall counts 412/253/264/288/175. All diagnostic overlays reviewed. 23 tests pass; all five browser screenshots, rapid switching, mobile390/keyboard, booking reload/cancel verified. Review fixes: diagonal west walls restored with RED→GREEN regression; interior touch-action corrected. Exact current geometry and modern room binding remain unverified. Publishing existing private Site next.
 Active spec: docs/superpowers/specs/2026-10-29-campus-booking.md
 Active plan: docs/superpowers/plans/2026-10-29-campus-booking.md
 Earlier fictional depot and material-reuse concepts are superseded by user's campus navigation and self-study seat booking request.
