@@ -77,3 +77,13 @@
 -43 tests pass, including readiness vs flight ordering, stale requests, cancellation, easing, reduced motion, and context loss during preparation.
 - Browser: clickentry verified mid-frame with stagevisible and loaderhidden; ready floor4 then returned; plus-button threshold entersfloor4; wheel atfacade entersfloor4; rapid2→5 settles on5; Escape keeps building interactive; mobile390×844 settles on3 withoutoverflow. Physical multitouch not tested.
 - Screenshot: docs/screenshots/immersive/entry-motion.png. No booking or source geometry changes.
+
+
+## 2026-10-30 — walk, spatial indexes and cinematic return
+
+- 54 Node tests pass. New checks cover swept wall collision/sliding, door vs sealed partition, disconnected inset, safe source-floor spawns, clear initial viewing direction, all149 zone polygons and walkable entries, honest model-index semantics, reverse-zoom gating and reduced-motion tour behavior. TypeScript check passes.
+- Independent final reviewer checked controller lifecycle and sampled500 route attempts per floor. Fixed post-await departure cancellation race and blur/visibility animation ownership. Reviewer then verified entry/exit cancellation with a runtime harness: no scheduled frames and no late focus; no remaining actionable findings.
+- Browser QA1065×924 and390×844: source-floor1/4/5 walk entry, WASD and mobile held-direction movement, minimap route arrives, model→walk→model/scan, floor switch during walk, zone search→selection→focus→entry, tour pause/manual-next/stop, zoom-out returns to exterior. Mobile uses a tall-axis default composition and has no horizontal overflow. Console errors/warnings empty.
+- Rendered room labels are decluttered against stair labels and occluded by walls in walk mode. Derived149 zones are13/40/40/40/16 per floor. Source overlay diagnostics retained and inspected; modern room numbers remain unbound. No actual venue availability or modern accessibility is inferred.
+- Browser QA uses local preview of the packaged source; private publication is verified by the native deployment result. Physical phone/multitouch, GPU-loss injection and actual email delivery were not tested this turn; no mail service exists. Booking logic was unchanged and its automated regression checks pass.
+- Screenshots: docs/screenshots/immersive/spatial-floor.png, walk.png and mobile-floor.png.
