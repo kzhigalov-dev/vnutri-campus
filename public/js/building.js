@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createMotion,zoomEntryFloor} from './navigation-motion.js';
 import {OrbitControls} from '../vendor/OrbitControls.js';
 // Massing follows the archived long spine / three-wing footprint. Facade is illustrative.
 export function createBuilding({container,onSelect,onHover,onFailure}){
@@ -43,16 +44,19 @@ export function createBuilding({container,onSelect,onHover,onFailure}){
  for(let x=-24;x<28;x+=10){box(root,x,12,5,.5,1.9,.6,base);box(root,x,13,5,.8,.12,.8,trim);}
  // Fine site grid, subdued enough for the building to remain the central object.
  const grid=new THREE.GridHelper(100,50,0x38505d,0x263c49);grid.position.y=-.5;scene.add(grid);
- let disposed=false,hovered=null,selected=null,pointerDown=null;const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
+ const motion=createMotion();let disposed=false,hovered=null,selected=null,entryFloor=null,entering=false,lastZoom=1,pointerDown=null;const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
  function render(){if(!disposed)renderer.render(scene,camera);}
- function highlight(n){hovered=n;for(const [f,body] of floorBodies){body.material.color.set(f===n?0xe6c188:f===selected?0xc8b8db:0xaaa693);body.material.emissive.set(f===n?0x5f3e18:f===selected?0x272032:0x000000);body.material.emissiveIntensity=.35;}render();}
+ function highlight(n){if(entering)return;if(n)entryFloor=n;hovered=n;const active=n??entryFloor;for(const [f,body] of floorBodies){body.material.color.set(f===active?0xe6c188:f===selected?0xc8b8db:0xaaa693);body.material.emissive.set(f===active?0x5f3e18:f===selected?0x272032:0x000000);body.material.emissiveIntensity=.35;}render();}
  function pick(e){const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);ray.setFromCamera(pointer,camera);for(const h of ray.intersectObject(root,true)){let o=h.object;while(o){if(o.userData.floor)return o.userData.floor;o=o.parent;}}return null;}
- renderer.domElement.addEventListener('pointermove',e=>{if(e.buttons)return;const n=pick(e);if(n!==hovered){highlight(n);onHover(n);}renderer.domElement.style.cursor=n?'pointer':'grab';});
+ renderer.domElement.addEventListener('pointermove',e=>{if(e.buttons||entering)return;const n=pick(e);if(n!==hovered){highlight(n);onHover(n);}renderer.domElement.style.cursor=n?'pointer':'grab';});
  renderer.domElement.addEventListener('pointerleave',()=>{highlight(null);onHover(null);});
  renderer.domElement.addEventListener('pointerdown',e=>pointerDown={x:e.clientX,y:e.clientY});
- renderer.domElement.addEventListener('pointerup',e=>{if(!pointerDown)return;const moved=Math.hypot(e.clientX-pointerDown.x,e.clientY-pointerDown.y);pointerDown=null;if(moved<6){const n=pick(e);if(n)onSelect(n);}});
- renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();disposed=true;onFailure();});
+ renderer.domElement.addEventListener('pointerup',e=>{if(!pointerDown||entering)return;const moved=Math.hypot(e.clientX-pointerDown.x,e.clientY-pointerDown.y);pointerDown=null;if(moved<6){const n=pick(e);if(n)onSelect(n);}});
+ renderer.domElement.addEventListener('wheel',e=>{if(entering)return;const n=pick(e);if(n){highlight(n);onHover(n);}if(e.deltaY<0&&camera.zoom>=1.85&&entryFloor)onSelect(entryFloor);},{passive:true,capture:true});
+ renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();disposed=true;motion.cancel();onFailure();});
  function resize(){const w=container.clientWidth,h=container.clientHeight,aspect=w/h,half=Math.max(20,43/aspect);if(!w||!h)return;camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;camera.updateProjectionMatrix();renderer.setSize(w,h,false);controls.update();render();}
- const observer=new ResizeObserver(resize);observer.observe(container);controls.addEventListener('change',render);resize();
- return {highlight,select(n){selected=n;highlight(null);},reset(){camera.position.set(39,32,50);controls.target.set(0,4,0);camera.zoom=1;camera.updateProjectionMatrix();controls.update();render();},zoom(factor){camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,.65,2.3);camera.updateProjectionMatrix();render();},dispose(){disposed=true;observer.disconnect();controls.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());renderer.dispose();}};
+ const observer=new ResizeObserver(resize);observer.observe(container);controls.addEventListener('change',()=>{render();const floor=entering?null:zoomEntryFloor(lastZoom,camera.zoom,entryFloor);lastZoom=camera.zoom;if(floor)onSelect(floor);});resize();
+ function reset(){motion.cancel();entering=false;controls.enabled=true;controls.maxZoom=2.3;camera.position.set(39,32,50);controls.target.set(0,4,0);camera.zoom=lastZoom=1;camera.updateProjectionMatrix();controls.update();render();}
+ async function flyTo(number){motion.cancel();entering=false;entryFloor=number;highlight(number);entering=true;controls.enabled=false;controls.maxZoom=4.5;const start=camera.position.clone(),targetStart=controls.target.clone(),focus=new THREE.Vector3(0,(number-1)*level+1.1,5),direction=start.clone().sub(targetStart),end=focus.clone().add(direction.multiplyScalar(.72)),initialZoom=camera.zoom;return motion.run(t=>{camera.position.lerpVectors(start,end,t);controls.target.lerpVectors(targetStart,focus,t);camera.zoom=initialZoom+(3.8-initialZoom)*t;camera.updateProjectionMatrix();controls.update();render();},900);}
+ return {highlight,flyTo,select(n){selected=n;if(n===null)entryFloor=null;highlight(n);},reset,zoom(factor){if(entering)return;const previous=camera.zoom,requested=previous*factor;camera.zoom=THREE.MathUtils.clamp(requested,.65,2.3);lastZoom=camera.zoom;camera.updateProjectionMatrix();render();const floor=zoomEntryFloor(previous,requested,entryFloor);if(floor)onSelect(floor);},dispose(){disposed=true;motion.cancel();observer.disconnect();controls.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());renderer.dispose();}};
 }

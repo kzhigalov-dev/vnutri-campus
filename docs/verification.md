@@ -68,3 +68,12 @@
 - Independent reviewer identified live filter using demo occupancy and stale response date race. Both corrected with regression tests. No additional material findings.
 - Screenshots: docs/screenshots/immersive/building.png and email.png.
 - Current modern room coordinates remain unknown after extra official-source/portfolio search. No guessed contemporary labels or bookable room polygons placed on archive geometry. Current wall/stair state is not surveyed.
+
+## 2026-10-30 — camera entry and zoom navigation
+
+- Clicking a building floor now prepares the interior while animating the exterior camera for900ms; after readiness a600ms fade and interior camera settle reveal the floor. No full-screen loading layer is shown during entry. Hover/focus prewarms geometry and renderer.
+- Zooming inward past1.85× enters the highlighted floor; the last highlighted level persists when moving to +. Wheel chooses the facade level under the pointer. Returning resets exterior camera and input controls.
+- Cancellable RAF motions, prefers-reduced-motion support, latest-navigation guards, Escape cancellation, and a 2D fallback on WebGL loss. Independent review found a pending-load context-loss deadlock; reproduced with the real controller and fixed.
+-43 tests pass, including readiness vs flight ordering, stale requests, cancellation, easing, reduced motion, and context loss during preparation.
+- Browser: clickentry verified mid-frame with stagevisible and loaderhidden; ready floor4 then returned; plus-button threshold entersfloor4; wheel atfacade entersfloor4; rapid2→5 settles on5; Escape keeps building interactive; mobile390×844 settles on3 withoutoverflow. Physical multitouch not tested.
+- Screenshot: docs/screenshots/immersive/entry-motion.png. No booking or source geometry changes.

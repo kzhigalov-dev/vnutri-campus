@@ -1,3 +1,4 @@
+import {createMotion} from './navigation-motion.js';
 import * as THREE from 'three';
 import {OrbitControls} from '../vendor/OrbitControls.js';
 import {toWorld,segmentTransform,validateFloorGeometry} from './geometry.js';
@@ -7,6 +8,7 @@ export function createFloorScene({container,onFailure}){
  const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-48,48,24,-24,.1,300);camera.position.set(18,55,46);
  const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enablePan=true;controls.enableDamping=false;controls.minZoom=.65;controls.maxZoom=6;controls.minPolarAngle=.01;controls.maxPolarAngle=1.35;controls.rotateSpeed=.5;controls.panSpeed=.7;controls.zoomSpeed=.8;controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
  scene.add(new THREE.HemisphereLight(0xd4e3f5,0x625740,1.8));const sun=new THREE.DirectionalLight(0xffe0b0,2.2);sun.position.set(-18,30,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,1024);Object.assign(sun.shadow.camera,{left:-45,right:45,top:16,bottom:-16,near:1,far:90});sun.shadow.normalBias=.035;scene.add(sun);const rim=new THREE.DirectionalLight(0x96b4d9,1.2);rim.position.set(25,18,-20);scene.add(rim);
+ const motion=createMotion();let entranceRevision=0;
  let group,overlay,wallMesh,capMesh,current,texture,revision=0,failed=false,low=true,underlay=false,disposed=false;
  const labelLayer=document.createElement('div');labelLayer.className='floor-label-layer';labelLayer.setAttribute('aria-hidden','true');container.append(labelLayer);let labels=[];
  const labelData=fetch('./data/archive-labels.json').then(r=>r.ok?r.json():null).catch(()=>null);
@@ -44,7 +46,7 @@ export function createFloorScene({container,onFailure}){
   if(f.floor===5){const bottom=Math.max(...f.footprint.map(p=>p[1]));for(let px=700;px<2800;px+=220){const [x,z]=toWorld(f,px,bottom-100);box(group,x,.18,z,.1,.15,3.1,materials.wood);}}
  }
  async function show(f,url){
-  if(!validateFloorGeometry(f))throw Error('Invalid floor geometry');if(failed||disposed)throw Error('3D unavailable');const request=++revision;
+  stopMotion();if(!validateFloorGeometry(f))throw Error('Invalid floor geometry');if(failed||disposed)throw Error('3D unavailable');const request=++revision;
   const [loaded,annotations]=await Promise.all([new THREE.TextureLoader().loadAsync(url),labelData]);if(request!==revision||disposed||failed){loaded.dispose();return false;}
   clear();current=f;texture=loaded;texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
   group=new THREE.Group();scene.add(group);const floor=new THREE.Mesh(floorShape(f,.22),materials.floor);floor.position.y=-.22;floor.receiveShadow=true;group.add(floor);
@@ -54,10 +56,12 @@ export function createFloorScene({container,onFailure}){
   const outlineGeo=floorShape(f,.01),outline=new THREE.LineSegments(new THREE.EdgesGeometry(outlineGeo),new THREE.LineBasicMaterial({color:0x728c93}));outlineGeo.dispose();outline.position.y=-.225;group.add(outline);
   box(group,0,-.45,0,76,.25,80*f.imageHeight/f.imageWidth+.6,materials.edge);
   labelLayer.replaceChildren();labels=(annotations?.floors.find(item=>item.floor===f.floor)?.labels||[]).map(item=>{const element=document.createElement('span');element.className='floor-source-label';element.textContent=item.text;labelLayer.append(element);const [x,z]=toWorld(f,item.x,item.y);return {element,position:new THREE.Vector3(x,1.9,z)};});
-  reset();requestAnimationFrame(render);container.dataset.floor=String(f.floor);container.dataset.wallCount=String(f.walls.length);container.dataset.furnitureCount=String(furnitureCount);return true;
+  resize();reset();requestAnimationFrame(render);container.dataset.floor=String(f.floor);container.dataset.wallCount=String(f.walls.length);container.dataset.furnitureCount=String(furnitureCount);return true;
  }
- function reset(){camera.position.set(18,55,46);camera.zoom=1;controls.target.set(0,0,0);camera.updateProjectionMatrix();controls.update();render();}
+ function stopMotion(){entranceRevision++;motion.cancel();controls.enabled=true;}
+ function reset(){stopMotion();camera.position.set(18,55,46);camera.zoom=1;controls.target.set(0,0,0);camera.updateProjectionMatrix();controls.update();render();}
  function resize(){const w=container.clientWidth,h=container.clientHeight;if(!w||!h)return;const aspect=w/h,half=Math.max(18,44/aspect);camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;camera.updateProjectionMatrix();renderer.setSize(w,h,false);render();}
  const observer=new ResizeObserver(resize);observer.observe(container);controls.addEventListener('change',render);renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();if(failed)return;failed=true;revision++;onFailure();});resize();
- return {show,reset,zoom(factor){camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,.65,6);camera.updateProjectionMatrix();render();},top(){camera.position.set(0,70,.01);controls.target.set(0,0,0);camera.zoom=1;camera.updateProjectionMatrix();controls.update();render();},pan(x,z){const delta=new THREE.Vector3(x,0,z);camera.position.add(delta);controls.target.add(delta);controls.update();render();},setLow(value){low=value;updateWalls();},setOverlay(value){underlay=value;if(overlay)overlay.visible=value;render();},dispose(){if(disposed)return;disposed=true;revision++;observer.disconnect();controls.dispose();clear();boxGeo.dispose();Object.values(materials).forEach(m=>m.dispose());renderer.dispose();}};
+ async function enter(){stopMotion();const request=++entranceRevision;controls.enabled=false;const start=new THREE.Vector3(18,44,55),end=new THREE.Vector3(18,55,46);const completed=await motion.run(t=>{camera.position.lerpVectors(start,end,t);camera.zoom=1.28-.28*t;camera.updateProjectionMatrix();controls.update();render();},600);if(request===entranceRevision)controls.enabled=true;return completed;}
+ return {show,enter,cancelEntrance:stopMotion,reset,zoom(factor){stopMotion();camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,.65,6);camera.updateProjectionMatrix();render();},top(){stopMotion();camera.position.set(0,70,.01);controls.target.set(0,0,0);camera.zoom=1;camera.updateProjectionMatrix();controls.update();render();},pan(x,z){stopMotion();const delta=new THREE.Vector3(x,0,z);camera.position.add(delta);controls.target.add(delta);controls.update();render();},setLow(value){low=value;updateWalls();},setOverlay(value){underlay=value;if(overlay)overlay.visible=value;render();},dispose(){if(disposed)return;disposed=true;revision++;stopMotion();observer.disconnect();controls.dispose();clear();boxGeo.dispose();Object.values(materials).forEach(m=>m.dispose());renderer.dispose();}};
 }
