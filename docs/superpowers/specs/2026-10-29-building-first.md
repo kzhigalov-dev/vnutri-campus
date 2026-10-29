@@ -1,0 +1,7 @@
+# Building-first campus explorer
+
+User requests a building-centered experience: initial whole building, hover/select floors, inspect actual plans, choose room and book study seats. Prior instruction authorizes autonomous execution through completion.
+
+Replace slogan-led landing with a full building viewer. Preserve name, evening lighting, vanilla JS/Three.js, existing booking records/model. Building massing follows the long spine and three wings in archive; façade/details are illustrative, not survey data. Five floors are individually highlighted by hover or keyboard focus, selectable by click/Enter/touch. Floor view shows the actual source scan for that floor, zoom and pan, source year/page and return to building. Floor4 has current sourced room list and booking; other floors have no invented current rooms or booking. Current room positions cannot be verified from historical BTI numbering, so no fabricated room pins or routes. Separate confirmed room identity from unknown spatial binding. This is a material limit of the available evidence; user should see it at point of use.
+
+Use real archive plans pages319–323 (floors1–5). Exact labels confirmed visually. Archive scans are not current evacuation/navigation plans. Existing 8-area booking pilot remains on floor4; three proposed zones explicitly distinguished. Building is primary and booking contextual. Search directory22 remains. Responsive and keyboard; reduced motion; WebGL fallback has five usable floor buttons. Preserve audience/private project ID on publication.
