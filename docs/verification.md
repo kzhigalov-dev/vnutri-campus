@@ -108,3 +108,12 @@
 - Browser booking: empty selection shows error; seats2/6 disabled at13–15; seat1 saved once, reload restored, history cancel released it. Test record cancelled. Receipt/cancel display uses pilot labels while legacy domain IDs/storage key remain compatible.
 - Fresh independent review found graphics-import fallback, route URL restoration and same-floor instruction issues. Fixed all3 and independently rechecked. Browser error/warning log empty. Screenshots in docs/screenshots/navigation/.
 - Real mail, physical phone/multitouch, forced GPU-loss and current-campus wayfinding not tested. Pages workflow41031511704 succeeded for5758e51. Published navigator.js matches local bytes. Public browser verified route1→4, save→reload→receipt with pilot label→cancel via explicit button→empty history and old bookingURL redirect; test record cancelled.
+
+
+## 2026-10-30 — creative atlas and estimated directory placements
+
+- New light architectural model: lilac canvas, five coloured slab edges, solid pale plates, low dark walls, coral work areas, larger floor signs and quieter white controls. Source geometry/booking domain unchanged. Supporting pages share the palette.
+-22 directory records placed on unique accessible floor4 polygons in a separate adapter. All positions explicitly author-proposed with≈, including documented-floor records. Unconfirmed floors, historical/conflicting assignments, original model indexes and sources remain disclosed. No current numbered plan was found for Voznesensky, Morskaya18 orSadovaya54. Official Morskaya terminal is the strongest next source; alternate campuses are researched, not falsely modeled.
+-65 tests and tsc pass. New tests prove source immutability,22 unique reachable placements, approximate display semantics, historic/conflict retention, repeated annotation safety and legacy pilot alias compatibility.
+- Browser1280×720 and390×844: source directory462→map, search462→card≈462→crossfloor route, conflict400evidence, maplabel→selectedlist, combinedquiet/freefilters, hidden selection cleared, mobile save/reload/cancel, receipt/history alias retainsΠ4.08 alongside≈462, quick seat button focuses selection. Test record cancelled; no console errors/warnings.
+- Independent builder and final code reviews complete; no material findings. Screenshots docs/screenshots/creative-atlas/. No real-campus survey, physical phone/multitouch, real email or new GPU-loss injection. Public check follows push.

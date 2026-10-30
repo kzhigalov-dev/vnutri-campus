@@ -1,3 +1,4 @@
+import {placementForSpace} from './room-placements.js';
 import {rooms} from './data.js';
 import {occupiedSeats} from './model.js';
 // Model-only pilot placements, never asserted to be modern rooms459/462/etc.
@@ -7,4 +8,6 @@ export const pilotRooms=rooms.map((r,i)=>({...r,number:`П4.${String(Number(bind
 export const pilotRoomById=id=>pilotRooms.find(r=>r.id===id);
 export const pilotRoomBySpace=id=>pilotRooms.find(r=>r.spaceId===id);
 export function pilotStatus(room,bookings,slot){const occupied=occupiedSeats(room.id,slot.date,slot.start,slot.hours,bookings),free=room.seatCount-occupied.size;return {occupied,free,state:free?'available':'busy',text:free?`${free} из ${room.seatCount} мест`:'Все места заняты'};}
-export function filterPilotRooms({query='',category='all',freeOnly=false}={},bookings=[],slot={}){const q=query.trim().toLocaleLowerCase('ru');return pilotRooms.filter(r=>(category==='all'||r.category===category)&&(!q||`${r.number} ${r.name} ${r.equipment.join(' ')}`.toLocaleLowerCase('ru').includes(q))&&(!freeOnly||pilotStatus(r,bookings,slot).free>0));}
+export function filterPilotRooms({query='',category='all',freeOnly=false}={},bookings=[],slot={}){const q=query.trim().toLocaleLowerCase('ru');return pilotRooms.filter(r=>(category==='all'||r.category===category)&&(!q||`${r.number} ${placementForSpace(r.spaceId)?.number||''} ${r.name} ${r.equipment.join(' ')}`.toLocaleLowerCase('ru').includes(q))&&(!freeOnly||pilotStatus(r,bookings,slot).free>0));}
+
+export function pilotDisplayNumber(room){const p=placementForSpace(room.spaceId);return p?`≈ ${p.number} / ${room.number}`:room.number;}

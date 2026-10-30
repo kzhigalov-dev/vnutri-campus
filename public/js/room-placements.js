@@ -1,0 +1,8 @@
+// Author-created scenario, explicitly requested by the user. No surveyed coordinates.
+// Purpose/floor evidence belongs to directory.json; it never verifies these placements.
+export const roomPlacements=Object.freeze([
+ ['400',2],['404',3],['411',7],['415',9],['419',10],['420',11],['435',14],['436',15],['437',16],['439',17],['440',18],['446',19],['452',27],['459',4],['460',21],['462',8],['466',13],['467',22],['469',23],['475',24],['484',20],['489',25]
+].map(([number,index])=>Object.freeze({number,spaceId:`f4-s${index}`,confidence:'illustrative'})));
+export const placementForSpace=id=>roomPlacements.find(p=>p.spaceId===id);
+export function applyRoomPlacements(campus,directory){for(const placement of roomPlacements){const room=directory.rooms.find(r=>r.number===placement.number),space=campus.entries.get(placement.spaceId);if(!room||!space)continue;space.modelIndex??=space.label;space.label=`≈ ${room.number}`;space.displayName=room.label;space.directoryRoom=room;space.placement=placement;}return campus;}
+export function roomEvidence(room){const state={conflicting:'Источники указывают разные номера; функция требует проверки.',historical:'Историческая запись; нынешнее назначение не подтверждено.',needs_verification:'В источниках есть расхождения по назначению.',overlapping_assignments:'Номер указан у разных подразделений; совместное использование не подтверждено.'}[room.evidence_status];return [room.documented_floor?`${room.documented_floor}-й этаж указан в источнике.`:'Этаж предположен по номеру; источник его не подтверждает.',state||'Номер и назначение взяты из открытого справочника.','Положение на модели предложено автором и не проверено.'].join(' ');}
