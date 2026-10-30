@@ -97,3 +97,14 @@
 - Browser1280×720 and390×844: inspected eye-level floor4 and2, matching door/model labels, colored minimap/stripes, two-sided overhead signs, material/ceiling/poster rendering; keyboard and held mobile direction move player. Allfive floors load with correct zone/door/prop counts, scan of floor5 remains correct, no console warnings/errors.
 - Booking new hero/catalog/form render, free local save then cancellation succeeds and releases place; test record cancelled. Booking and about on390px have scrollWidth=clientWidth=390. Modern room coordinates and live booking/email remain unconfigured. No physical phone, real-campus routes or forced GPU loss tested.
 - Screenshots: docs/screenshots/gallery/{floor,mobile-walk,booking,building}.png. All decorative content is illustrative, original archive retained separately.
+
+
+## 2026-10-30 — informative navigator
+
+- 62 Node tests pass; TypeScript check passes. New tests cover eight unique/reachable pilot bindings, preserved source data, all five floors, adjacent stair links, correct floor-step order and collision clearance. Added regression for a thin wall between free grid endpoints.
+- Replaced entry UI with a five-floor schematic:149 indexes, same filters/list/map, separate non-spatial real directory, eight free pilot areas, local booking/history/cancel, shared route parameters and textual floor steps. Walking/tours removed from entry points; old booking URL redirects.
+- Original scans/JSON retained. Schematic walls derive from zone boundaries with illustrative doors. Floor origins registered by exterior left/bottom edges before matching nearby stair rectangles. These are explicitly conditional routes, not a survey or evacuation plan.
+- Browser desktop1065×924/1280×720 and390×844: overview/floor focus, first→fourth and fifth→fourth routes, next step, share parameters/reload, selected/unselected status, quiet+free filters and empty search; modern462 opens a non-spatial card and clears when hidden. Mobile drawer closes and becomes inert; contextual cards leave map space.
+- Browser booking: empty selection shows error; seats2/6 disabled at13–15; seat1 saved once, reload restored, history cancel released it. Test record cancelled. Receipt/cancel display uses pilot labels while legacy domain IDs/storage key remain compatible.
+- Fresh independent review found graphics-import fallback, route URL restoration and same-floor instruction issues. Fixed all3 and independently rechecked. Browser error/warning log empty. Screenshots in docs/screenshots/navigation/.
+- Real mail, physical phone/multitouch, forced GPU-loss and current-campus wayfinding not tested. Pages publication verified separately after push.

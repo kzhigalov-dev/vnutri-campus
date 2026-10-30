@@ -1,0 +1,27 @@
+import {prepareGalleryLayout} from './gallery-layout.js';
+import {createWalkMap,pointInPolygon} from './walk-navigation.js';
+import {toWorld} from './geometry.js';
+const length=points=>points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
+export function schematicFloor(source,spaces){const walls=[...source.footprint.map((p,i)=>[...p,...source.footprint[(i+1)%source.footprint.length],5]),...spaces.flatMap(r=>r.polygon.map((p,i)=>[...p,...r.polygon[(i+1)%r.polygon.length],5]))];return prepareGalleryLayout({...source,walls},spaces);}
+export function createCampusNavigator(geometry,spaceData){
+ const floors=new Map(),entries=new Map(),nodes=new Map(),vertical=new Map(),paths=new Map();
+ const ref=geometry.floors.find(f=>f.floor===4)||geometry.floors[0],refMin=toWorld(ref,Math.min(...ref.footprint.map(p=>p[0])),0)[0],refBottom=toWorld(ref,0,Math.max(...ref.footprint.map(p=>p[1])))[1];
+ for(const source of geometry.floors){const spaces=spaceData.floors.find(row=>row.floor===source.floor)?.spaces||[],layout=schematicFloor(source,spaces),map=createWalkMap(layout.floor,{step:.2,radius:.1}),offset=[refMin-toWorld(source,Math.min(...source.footprint.map(p=>p[0])),0)[0],refBottom-toWorld(source,0,Math.max(...source.footprint.map(p=>p[1])))[1]];const f={source,floor:layout.floor,layout,map,offset,spaces:[],landings:[]};floors.set(source.floor,f);
+  const start={id:`start-${source.floor}`,label:`Точка старта · ${source.floor}-й этаж`,floor:source.floor,point:map.spawn(),kind:'start'};if(start.point)entries.set(start.id,start);
+  for(const s of spaces){const polygon=s.polygon.map(p=>toWorld(source,...p)),point=map.nearest(toWorld(source,...s.center),{polygon,maxDistance:1.5});const entry={...s,floor:source.floor,polygon,point,center:toWorld(source,...s.center),kind:'space'};f.spaces.push(entry);entries.set(s.id,entry);}
+  source.stairs.forEach(([x,y,w,h],i)=>{const center=toWorld(source,x+w/2,y+h/2),point=map.nearest(center,{maxDistance:2.2,component:map.largestComponent});if(!point)return;const node={id:`stairs-${source.floor}-${i}`,label:`Лестница ${i+1}`,floor:source.floor,point,center,index:i};f.landings.push(node);nodes.set(node.id,node);vertical.set(node.id,[]);});
+ }
+ for(let floor=1;floor<5;floor++){const a=floors.get(floor),b=floors.get(floor+1);if(!a||!b)continue;const candidates=[];for(const x of a.landings)for(const y of b.landings){const d=Math.hypot(x.center[0]+a.offset[0]-y.center[0]-b.offset[0],x.center[1]+a.offset[1]-y.center[1]-b.offset[1]);if(d<=2.5)candidates.push({x,y,d});}candidates.sort((a,b)=>a.d-b.d);const usedA=new Set(),usedB=new Set();for(const {x,y,d} of candidates){if(usedA.has(x.id)||usedB.has(y.id))continue;usedA.add(x.id);usedB.add(y.id);vertical.get(x.id).push({to:y.id,cost:7+d});vertical.get(y.id).push({to:x.id,cost:7+d});}}
+ function local(a,b){if(a.floor!==b.floor||!a.point||!b.point)return null;const key=`${a.floor}:${a.id}>${b.id}`;if(paths.has(key))return paths.get(key);const map=floors.get(a.floor).map,path=map.segmentClear(a.point,b.point)?[[...a.point],[...b.point]]:map.route(a.point,b.point);const good=path&&path.every((p,i)=>i===0||map.segmentClear(path[i-1],p))?path:null;paths.set(key,good);paths.set(`${a.floor}:${b.id}>${a.id}`,good?[...good].reverse():null);return good;}
+ function route(fromId,toId){const from=entries.get(fromId),to=entries.get(toId);if(!from?.point||!to?.point)return null;if(from.id===to.id)return {from,to,segments:[{floor:from.floor,points:[[...from.point]]}],connections:[],floors:[from.floor]};const direct=local(from,to);if(direct)return {from,to,segments:[{floor:from.floor,points:direct}],connections:[],floors:[from.floor]};
+  const graph=new Map(nodes);graph.set('__from',from);graph.set('__to',to);const dist=new Map([['__from',0]]),prev=new Map(),visited=new Set();
+  while(true){let current=null,best=Infinity;for(const [id,d] of dist)if(!visited.has(id)&&d<best){best=d;current=id;}if(!current)break;if(current==='__to')break;visited.add(current);const a=graph.get(current),edges=[];
+   for(const [id,b] of graph){if(id===current||id==='__from'||a.floor!==b.floor)continue;const path=local(a,b);if(path)edges.push({to:id,cost:length(path),path,floor:a.floor});}
+   for(const edge of vertical.get(current)||[])edges.push({...edge,connection:{fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index}});
+   for(const edge of edges){const next=best+edge.cost;if(next<(dist.get(edge.to)??Infinity)){dist.set(edge.to,next);prev.set(edge.to,{id:current,edge});}}
+  }
+  if(!prev.has('__to'))return null;const edges=[];for(let id='__to';id!=='__from';){const previous=prev.get(id);if(!previous)return null;edges.push(previous.edge);id=previous.id;}edges.reverse();const segments=edges.filter(e=>e.path).map(e=>({floor:e.floor,points:e.path})),connections=edges.filter(e=>e.connection).map(e=>e.connection),order=[from.floor];for(const connection of connections)if(order.at(-1)!==connection.toFloor)order.push(connection.toFloor);if(order.at(-1)!==to.floor)order.push(to.floor);return {from,to,segments,connections,floors:order};
+ }
+ function world(floor,p,y=.12){const f=floors.get(floor);return [p[0]+f.offset[0],(floor-1)*10+y,p[1]+f.offset[1]];}
+ return {floors,entries,route,world,links:[...vertical].flatMap(([from,edges])=>edges.map(e=>({from,to:e.to}))),isInside(point,floor){return floors.get(floor).map.polygons.some(poly=>pointInPolygon(point,poly));}};
+}
