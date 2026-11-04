@@ -92,3 +92,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .nav-email-send-row input:focus{border-color:var(--purple);outline:0}
 .nav-email-send-row button{white-space:nowrap}
 
+
+.nav-sidebar-contact{padding:12px 14px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.nav-sidebar-contact h2{font:700 20px/1.2 var(--display);margin:0 0 4px}
+.nav-sidebar-contact p{font-size:11px;color:var(--muted);margin:0 0 12px;line-height:1.5}

@@ -14,109 +14,93 @@ const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   "'": '&#39;'
 }[c]));
 
-/**
- * Инициализация формы обратной связи и модального окна
- */
-export function initContactForm() {
-  const modal = document.getElementById('nav-contact-modal');
-  const form = document.getElementById('contact-form');
-  if (!modal || !form) return;
+async function sendEmailPayload(templateParams, statusEl, submitBtn, submitText, formEl) {
+  const config = getEmailJSConfig();
+  const hasKeys = Boolean(config.publicKey && config.serviceId && config.templateId);
 
-  const statusEl = document.getElementById('contact-status');
-  const submitBtn = document.getElementById('contact-submit-btn');
-  const submitText = document.getElementById('contact-submit-text');
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = 'Отправка…';
 
-  function showStatus(html, type = 'is-info') {
-    if (!statusEl) return;
-    statusEl.hidden = false;
-    statusEl.className = `contact-status ${type}`;
-    statusEl.innerHTML = html;
-  }
-
-  function clearStatus() {
-    if (!statusEl) return;
-    statusEl.hidden = true;
-    statusEl.textContent = '';
-  }
-
-  function openModal(options = {}) {
-    clearStatus();
-    if (options.room) {
-      const roomInput = document.getElementById('contact-room');
-      if (roomInput) roomInput.value = options.room;
+  try {
+    if (hasKeys && typeof window.emailjs !== 'undefined') {
+      window.emailjs.init({ publicKey: config.publicKey });
+      await window.emailjs.send(
+        config.serviceId,
+        config.templateId,
+        templateParams,
+        config.publicKey
+      );
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.className = 'contact-status is-success';
+        statusEl.innerHTML = '<strong>Сообщение успешно отправлено!</strong> Копия направлена в ваш почтовый ящик.';
+      }
+      formEl.reset();
+      const roomInput = formEl.querySelector('[name="room"]');
+      if (roomInput) roomInput.value = '';
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.className = 'contact-status is-info';
+        statusEl.innerHTML = !hasKeys
+          ? '<strong>Данные формы проверены!</strong><br>Ключи EmailJS настраиваются в файле <code>public/js/emailjs-config.js</code>.'
+          : 'Библиотека EmailJS инициализируется, повторите попытку через секунду.';
+      }
+      formEl.reset();
     }
-    if (options.subject) {
-      const subjSelect = document.getElementById('contact-subject');
-      if (subjSelect) subjSelect.value = options.subject;
+  } catch (error) {
+    console.error('Ошибка EmailJS:', error);
+    const errText = error?.text || error?.message || 'Не удалось отправить данные';
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.className = 'contact-status is-error';
+      statusEl.innerHTML = `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Убедитесь, что в EmailJS аккаунт Gmail подключен (Connect Account), либо проверен пароль приложения.</small>`;
     }
-    if (!modal.open) {
-      modal.showModal();
-    }
-    // Фокус на имя
-    setTimeout(() => {
-      document.getElementById('contact-name')?.focus();
-    }, 50);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = 'Отправить через EmailJS';
   }
+}
 
-  window.openContactModal = openModal;
+function bindForm(form) {
+  if (!form || form.dataset.bound) return;
+  form.dataset.bound = 'true';
 
-  // Слушатели открытия
-  document.querySelectorAll('#nav-contact-open, #nav-contact-footer-btn, [data-open-contact]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const room = btn.getAttribute('data-contact-room') || '';
-      const subject = btn.getAttribute('data-contact-subject') || '';
-      openModal({ room, subject });
-    });
-  });
+  const statusEl = form.querySelector('.contact-status') || form.parentElement?.querySelector('.contact-status');
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const submitText = submitBtn?.querySelector('span') || submitBtn;
 
-  // Закрытие
-  const closeBtn = document.getElementById('nav-contact-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => modal.close());
-  }
-
-  // Клик по подложке (backdrop) закрывает диалог
-  modal.addEventListener('click', (e) => {
-    const rect = modal.getBoundingClientRect();
-    const isInDialog = (
-      rect.top <= e.clientY &&
-      e.clientY <= rect.top + rect.height &&
-      rect.left <= e.clientX &&
-      e.clientX <= rect.left + rect.width
-    );
-    if (!isInDialog) {
-      modal.close();
-    }
-  });
-
-  // Проверка хэша страницы
-  function checkHash() {
-    if (location.hash === '#contact' || location.hash === '#feedback') {
-      openModal();
-    }
-  }
-  window.addEventListener('hashchange', checkHash);
-  checkHash();
-
-  // Отправка формы
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    clearStatus();
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.textContent = '';
+    }
 
-    const name = document.getElementById('contact-name')?.value;
-    const email = document.getElementById('contact-email')?.value;
-    const subject = document.getElementById('contact-subject')?.value;
-    const room = document.getElementById('contact-room')?.value;
-    const message = document.getElementById('contact-message')?.value;
+    const nameInput = form.querySelector('[name="user_name"]') || form.querySelector('#contact-name');
+    const emailInput = form.querySelector('[name="user_email"]') || form.querySelector('#contact-email');
+    const subjectInput = form.querySelector('[name="subject"]') || form.querySelector('#contact-subject');
+    const roomInput = form.querySelector('[name="room"]') || form.querySelector('#contact-room');
+    const messageInput = form.querySelector('[name="message"]') || form.querySelector('#contact-message');
+
+    const name = nameInput?.value;
+    const email = emailInput?.value;
+    const subject = subjectInput?.value;
+    const room = roomInput?.value;
+    const message = messageInput?.value;
 
     const validation = validateContactPayload({ name, email, message });
     if (!validation.valid) {
       const firstError = Object.values(validation.errors)[0];
-      showStatus(escapeHTML(firstError), 'is-error');
-      if (validation.errors.name) document.getElementById('contact-name')?.focus();
-      else if (validation.errors.email) document.getElementById('contact-email')?.focus();
-      else if (validation.errors.message) document.getElementById('contact-message')?.focus();
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.className = 'contact-status is-error';
+        statusEl.innerHTML = escapeHTML(firstError);
+      }
+      if (validation.errors.name) nameInput?.focus();
+      else if (validation.errors.email) emailInput?.focus();
+      else if (validation.errors.message) messageInput?.focus();
       return;
     }
 
@@ -128,48 +112,112 @@ export function initContactForm() {
       message,
     });
 
-    const config = getEmailJSConfig();
-    const hasKeys = Boolean(config.publicKey && config.serviceId && config.templateId);
-
-    if (submitBtn) submitBtn.disabled = true;
-    if (submitText) submitText.textContent = 'Отправка…';
-
-    try {
-      if (hasKeys && typeof window.emailjs !== 'undefined') {
-        window.emailjs.init({ publicKey: config.publicKey });
-        await window.emailjs.send(
-          config.serviceId,
-          config.templateId,
-          templateParams,
-          config.publicKey
-        );
-        showStatus('<strong>Сообщение успешно отправлено!</strong> Копия направлена в сервис почты.', 'is-success');
-        form.reset();
-        const roomInput = document.getElementById('contact-room');
-        if (roomInput) roomInput.value = '';
-      } else {
-        // Режим демонстрации без указанных ключей (валидация прошла)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const helpText = !hasKeys
-          ? '<strong>Данные формы успешно проверены!</strong><br>Ключи EmailJS настраиваются в файле <code>public/js/emailjs-config.js</code>.'
-          : 'Библиотека EmailJS инициализируется, повторите отправку через секунду.';
-        showStatus(helpText, 'is-info');
-        form.reset();
-        const roomInput = document.getElementById('contact-room');
-        if (roomInput) roomInput.value = '';
-      }
-    } catch (error) {
-      console.error('Ошибка EmailJS:', error);
-      const errText = error?.text || error?.message || 'Не удалось отправить данные';
-      showStatus(
-        `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Для Gmail / Яндекса убедитесь, что в Email Services сервис подключен (Connect Account для Google или пароль приложения), а также верно указаны Service ID, Template ID и Public Key.</small>`,
-        'is-error'
-      );
-    } finally {
-      if (submitBtn) submitBtn.disabled = false;
-      if (submitText) submitText.textContent = 'Отправить через EmailJS';
-    }
+    await sendEmailPayload(templateParams, statusEl, submitBtn, submitText, form);
   });
+}
+
+export function openContactModal(options = {}) {
+  const modal = document.getElementById('nav-contact-modal');
+  if (modal) {
+    if (options.room) {
+      const roomInput = modal.querySelector('[name="room"]');
+      if (roomInput) roomInput.value = options.room;
+    }
+    if (options.subject) {
+      const subjSelect = modal.querySelector('[name="subject"]');
+      if (subjSelect) subjSelect.value = options.subject;
+    }
+    try {
+      if (typeof modal.showModal === 'function') {
+        if (!modal.open) modal.showModal();
+      } else {
+        modal.setAttribute('open', '');
+        modal.style.display = 'block';
+      }
+    } catch {
+      modal.setAttribute('open', '');
+      modal.style.display = 'block';
+    }
+    setTimeout(() => {
+      modal.querySelector('[name="user_name"]')?.focus();
+    }, 50);
+  }
+
+  // Также активируем вкладку связи на боковой панели главной страницы
+  if (typeof window.activateContactMode === 'function') {
+    window.activateContactMode(options);
+  } else {
+    const sidebarForm = document.getElementById('sidebar-contact-form');
+    if (sidebarForm) {
+      if (options.room) {
+        const roomInput = sidebarForm.querySelector('[name="room"]');
+        if (roomInput) roomInput.value = options.room;
+      }
+      if (options.subject) {
+        const subjSelect = sidebarForm.querySelector('[name="subject"]');
+        if (subjSelect) subjSelect.value = options.subject;
+      }
+    }
+  }
+}
+
+/**
+ * Инициализация всех форм на странице
+ */
+export function initContactForm() {
+  document.querySelectorAll('form.contact-form, #contact-form, #sidebar-contact-form, #feedback-page-form').forEach(bindForm);
+
+  const modal = document.getElementById('nav-contact-modal');
+  const closeBtn = document.getElementById('nav-contact-close');
+  if (modal && closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      if (typeof modal.close === 'function') modal.close();
+      else { modal.removeAttribute('open'); modal.style.display = 'none'; }
+    });
+    modal.addEventListener('click', (e) => {
+      const rect = modal.getBoundingClientRect();
+      const inDialog = (
+        rect.top <= e.clientY &&
+        e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX &&
+        e.clientX <= rect.left + rect.width
+      );
+      if (!inDialog) {
+        if (typeof modal.close === 'function') modal.close();
+        else { modal.removeAttribute('open'); modal.style.display = 'none'; }
+      }
+    });
+  }
+
+  // Слушатели открытия
+  document.querySelectorAll('#nav-contact-open, #nav-contact-footer-btn, [data-open-contact]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const room = btn.getAttribute('data-contact-room') || '';
+      const subject = btn.getAttribute('data-contact-subject') || '';
+      openContactModal({ room, subject });
+    });
+  });
+
+  // Проверка хэша
+  function checkHash() {
+    if (location.hash === '#contact' || location.hash === '#feedback') {
+      openContactModal();
+    }
+  }
+  window.addEventListener('hashchange', checkHash);
+  checkHash();
+}
+
+window.openContactModal = openContactModal;
+
+// Автоматический запуск при загрузке документа
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initContactForm);
+  } else {
+    initContactForm();
+  }
 }
 
 /**
