@@ -69,3 +69,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 
 .nav-address,.nav-time>summary small,.nav-result small,.nav-result .nav-status,.nav-slot label,.nav-slot legend,.nav-kind,.nav-disclosure,.nav-journey label,.nav-journey p,.nav-route li small,.nav-seat-legend{font-size:11px}
 .nav-seat small{font-size:10px}.nav-brand small{font-size:10px}.nav-toggle{font-size:11px}
+
+/* Contact & EmailJS styles */
+.contact-form{display:flex;flex-direction:column;gap:13px;margin-top:16px}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.contact-grid{grid-template-columns:1fr}}
+.contact-label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:var(--muted)}
+.contact-req{color:var(--coral)}
+.contact-label input,.contact-label select,.contact-label textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:9px 11px;font-size:12px;font-family:inherit;color:var(--ink);box-sizing:border-box;transition:border-color .15s}
+.contact-label input:focus,.contact-label select:focus,.contact-label textarea:focus{border-color:var(--purple);outline:0}
+.contact-label textarea{resize:vertical;min-height:80px}
+.contact-status{padding:12px 14px;border-radius:8px;font-size:12px;line-height:1.55}
+.contact-status.is-success{background:#eef7f0;color:#185a2f;border:1px solid #bce4c7}
+.contact-status.is-error{background:#fdf1ef;color:#9b2a1a;border:1px solid #f6c8c1}
+.contact-status.is-info{background:#f2eff8;color:#4f3d6c;border:1px solid #dbd4e8}
+.contact-status code{background:#e4e0ee;padding:1px 5px;border-radius:4px;font-size:11px}
+.contact-status small{display:block;margin-top:6px;line-height:1.5;color:inherit;opacity:.9}
+.contact-settings{margin-top:8px;border-top:1px solid var(--line);padding-top:12px}
+.contact-settings summary{cursor:pointer;font-size:11px;font-weight:600;color:var(--purple);user-select:none;outline:0}
+.contact-settings summary:hover{color:#573b88}
+.contact-settings-body{margin-top:10px;display:flex;flex-direction:column;gap:10px;background:#f7f6fb;padding:14px;border-radius:9px}
+.contact-help{font-size:11px;color:var(--muted);line-height:1.6;margin:0}
+.contact-help a{color:var(--purple);text-decoration:underline}
+.contact-settings-actions{display:flex;align-items:center;gap:10px;margin-top:4px}
+.contact-settings-actions .nav-btn{min-height:36px;padding:6px 12px;background:#fff}
+.nav-email-send-box{margin:14px 0 6px;padding:12px;background:var(--purple-soft);border-radius:8px;border:1px solid #dfd8ed}
+.nav-email-send-box label{display:block;font-size:11px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.nav-email-send-row{display:flex;gap:7px}
+.nav-email-send-row input{flex:1;min-width:0;height:38px;padding:6px 10px;border:1px solid #cfc8de;border-radius:6px;background:#fff;font-size:12px;color:var(--ink)}
+.nav-email-send-row input:focus{border-color:var(--purple);outline:0}
+.nav-email-send-row button{white-space:nowrap}
+
