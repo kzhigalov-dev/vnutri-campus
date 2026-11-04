@@ -88,8 +88,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 4. **Получение Public Key**:
    - В EmailJS откройте вкладку **Account** и скопируйте ваш **Public Key** (ранее назывался User ID).
 5. **Ввод ключей**:
-   - **Через сайт**: нажмите «Обратная связь» в шапке сайта → разверните блок «Настройка ключей EmailJS» → введите Service ID, Template ID и Public Key → нажмите «Сохранить ключи в браузере».
-   - **Через код**: в файле `public/js/emailjs-config.js` впишите их в объект `DEFAULT_EMAILJS_CONFIG`.
+   - Ключи прописываются в файле `public/js/emailjs-config.js` в объекте `DEFAULT_EMAILJS_CONFIG` (`serviceId`, `templateId`, `publicKey`).
 
 ### Альтернативно: настройка EmailJS с Яндекс Почтой:
 
@@ -123,8 +122,7 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 5. **Получение Public Key**:
    - В EmailJS откройте вкладку **Account** и скопируйте ваш **Public Key** (ранее назывался User ID).
 6. **Применение ключей**:
-   - **Через интерфейс (без правки кода)**: откройте форму «Обратная связь» на сайте, разверните блок «Настройка ключей EmailJS», введите `Service ID`, `Template ID` и `Public Key` и нажмите «Сохранить ключи в браузере».
-   - **Через код**: в файле `public/js/emailjs-config.js` укажите эти значения в объекте `DEFAULT_EMAILJS_CONFIG`.
+   - В файле `public/js/emailjs-config.js` укажите эти значения в объекте `DEFAULT_EMAILJS_CONFIG`.
 
 ## Достоверность
 

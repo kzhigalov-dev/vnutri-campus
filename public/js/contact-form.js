@@ -26,35 +26,6 @@ export function initContactForm() {
   const submitBtn = document.getElementById('contact-submit-btn');
   const submitText = document.getElementById('contact-submit-text');
 
-  // Элементы настройки EmailJS
-  const cfgService = document.getElementById('cfg-service-id');
-  const cfgTemplate = document.getElementById('cfg-template-id');
-  const cfgKey = document.getElementById('cfg-public-key');
-  const cfgSaveBtn = document.getElementById('cfg-save-btn');
-  const cfgStatus = document.getElementById('cfg-save-status');
-
-  // Загружаем сохранённые ключи
-  const currentCfg = getEmailJSConfig();
-  if (cfgService) cfgService.value = currentCfg.serviceId || '';
-  if (cfgTemplate) cfgTemplate.value = currentCfg.templateId || '';
-  if (cfgKey) cfgKey.value = currentCfg.publicKey || '';
-
-  if (cfgSaveBtn) {
-    cfgSaveBtn.addEventListener('click', () => {
-      const newCfg = {
-        serviceId: cfgService?.value || '',
-        templateId: cfgTemplate?.value || '',
-        publicKey: cfgKey?.value || '',
-      };
-      saveEmailJSConfig(newCfg);
-      if (cfgStatus) {
-        cfgStatus.textContent = 'Ключи сохранены в браузере!';
-        setTimeout(() => { if (cfgStatus) cfgStatus.textContent = ''; }, 3500);
-      }
-      showStatus('Настройки EmailJS обновлены и сохранены.', 'is-info');
-    });
-  }
-
   function showStatus(html, type = 'is-info') {
     if (!statusEl) return;
     statusEl.hidden = false;
@@ -180,7 +151,7 @@ export function initContactForm() {
         // Режим демонстрации без указанных ключей (валидация прошла)
         await new Promise(resolve => setTimeout(resolve, 500));
         const helpText = !hasKeys
-          ? '<strong>Данные формы успешно проверены!</strong><br>Для реальной отправки укажите <code>Service ID</code>, <code>Template ID</code> и <code>Public Key</code> в раскрывающемся блоке «Настройка ключей EmailJS» ниже или в <code>public/js/emailjs-config.js</code>.'
+          ? '<strong>Данные формы успешно проверены!</strong><br>Ключи EmailJS настраиваются в файле <code>public/js/emailjs-config.js</code>.'
           : 'Библиотека EmailJS инициализируется, повторите отправку через секунду.';
         showStatus(helpText, 'is-info');
         form.reset();
@@ -210,7 +181,7 @@ export async function sendBookingNotification(booking, toEmail) {
     return {
       success: false,
       reason: 'no_config',
-      message: 'Ключи EmailJS не настроены. Откройте «Обратная связь» в шапке и укажите ключи в блоке настроек.'
+      message: 'Ключи EmailJS не настроены в файле public/js/emailjs-config.js.'
     };
   }
   if (typeof window.emailjs === 'undefined') {
