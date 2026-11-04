@@ -8,11 +8,11 @@
 
 export const DEFAULT_EMAILJS_CONFIG = {
   // Service ID из личного кабинета EmailJS (Email Services -> Gmail / Yandex)
-  serviceId: '',
+  serviceId: 'service_a725mgb',
   // Template ID из EmailJS (Email Templates)
-  templateId: '',
+  templateId: 'template_yf67u5l',
   // Public Key (Account -> Public Key / User ID)
-  publicKey: '',
+  publicKey: 'z9g7F4vnbby6eBTfE',
 };
 
 export const CONFIG_STORAGE_KEY = 'vnutri_campus_emailjs_config';

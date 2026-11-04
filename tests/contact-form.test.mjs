@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_EMAILJS_CONFIG,
   getEmailJSConfig,
   saveEmailJSConfig,
   validateContactPayload,
@@ -83,11 +84,11 @@ test('getEmailJSConfig and saveEmailJSConfig manage persistence', () => {
     setItem(k, v) { this.store[k] = String(v); }
   };
 
-  // Initially empty
+  // Initially uses default config
   const initial = getEmailJSConfig(mockStorage);
-  assert.equal(initial.serviceId, '');
-  assert.equal(initial.templateId, '');
-  assert.equal(initial.publicKey, '');
+  assert.equal(initial.serviceId, DEFAULT_EMAILJS_CONFIG.serviceId);
+  assert.equal(initial.templateId, DEFAULT_EMAILJS_CONFIG.templateId);
+  assert.equal(initial.publicKey, DEFAULT_EMAILJS_CONFIG.publicKey);
 
   // Save new configuration
   saveEmailJSConfig({
