@@ -7,7 +7,7 @@
  */
 
 export const DEFAULT_EMAILJS_CONFIG = {
-  // Service ID из личного кабинета EmailJS (Email Services -> Yandex / SMTP)
+  // Service ID из личного кабинета EmailJS (Email Services -> Gmail / Yandex)
   serviceId: '',
   // Template ID из EmailJS (Email Templates)
   templateId: '',

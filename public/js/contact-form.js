@@ -191,7 +191,7 @@ export function initContactForm() {
       console.error('Ошибка EmailJS:', error);
       const errText = error?.text || error?.message || 'Не удалось отправить данные';
       showStatus(
-        `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Для Яндекса убедитесь, что в Яндекс Почте разрешён доступ по IMAP/SMTP, в EmailJS используется пароль приложения (не обычный пароль), а также верно указаны Service ID и Template ID.</small>`,
+        `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Для Gmail / Яндекса убедитесь, что в Email Services сервис подключен (Connect Account для Google или пароль приложения), а также верно указаны Service ID, Template ID и Public Key.</small>`,
         'is-error'
       );
     } finally {
