@@ -144,6 +144,40 @@ def build_walls(rooms, footprint):
     return out
 
 
+def cut_door_gaps(walls, rooms, footprint, gap=34):
+    """Split every room wall that faces open (non-room) floor space, leaving a
+    door opening — mirrors the door gaps the BTI tracing kept."""
+    def inside_fp(x, y):
+        inside = False
+        n = len(footprint)
+        for i in range(n):
+            a, b = footprint[i], footprint[(i + 1) % n]
+            if (a[1] > y) != (b[1] > y) and x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]:
+                inside = not inside
+        return inside
+    def in_room(x, y):
+        return any(x1 + 2 < x < x2 - 2 and y1 + 2 < y < y2 - 2 for _, x1, y1, x2, y2 in rooms)
+    out = []
+    for x1, y1, x2, y2, t in walls:
+        dx, dy = x2 - x1, y2 - y1
+        length = math.hypot(dx, dy)
+        if length < 26:
+            out.append([x1, y1, x2, y2, t]); continue
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        nx, ny = (dy / length) * 8, (-dx / length) * 8
+        open_a = inside_fp(mx + nx, my + ny) and not in_room(mx + nx, my + ny)
+        open_b = inside_fp(mx - nx, my - ny) and not in_room(mx - nx, my - ny)
+        if (open_a ^ open_b) and length >= 56:
+            ux, uy = dx / length, dy / length
+            cx, cy = mx - ux * gap / 2, my - uy * gap / 2
+            ex, ey = mx + ux * gap / 2, my + uy * gap / 2
+            out.append([x1, y1, cx, cy, t])
+            out.append([ex, ey, x2, y2, t])
+        else:
+            out.append([x1, y1, x2, y2, t])
+    return out
+
+
 def dedupe_close(walls, eps=6.0):
     kept = []
     for w in walls:
@@ -272,7 +306,7 @@ def main():
         img.save(SIGNAGE / f'floor{n}-plan-final.png')
         out = ASSETS / f'floor{n}-archive-plan.webp'
         img.save(out, 'WEBP', quality=88)
-        walls = dedupe_close(build_walls(rooms, footprint))
+        walls = cut_door_gaps(dedupe_close(build_walls(rooms, footprint)), rooms, footprint)
         stairs = nav_stairs[n] + icon_stairs[n]
         new_floors.append({
             'floor': n, 'page': 318 + n, 'imageWidth': w, 'imageHeight': h,

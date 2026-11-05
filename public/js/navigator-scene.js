@@ -47,7 +47,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    wall:material({color:0xe4dbc9,roughness:.82,metalness:0}),room:material({color:0xe0c7a6,roughness:.6}),
    free:material({color:0xc9b88d,roughness:.4}),selected:material({color:0xffc587,roughness:.38,emissive:0xe98d4b,emissiveIntensity:.16}),
    hover:material({color:0xb6a7d5,roughness:.4}),busy:material({map:hatchTexture,color:0xe0d8df,roughness:.8}),
-   stair:material({color:0x99a4a5,roughness:.35,metalness:.12})
+   stair:material({color:0x99a4a5,roughness:.35,metalness:.12}),stairRail:material({color:0x7c8889,roughness:.5,metalness:.2})
   };
   Object.values(palette).forEach(m=>{m.transparent=true;m.userData.baseOpacity=1;});
   const plate=new THREE.Mesh(shapeGeometry(f.source,[f.source.footprint,...(f.source.insets||[])],.55),[palette.plate,palette.edge]);plate.position.y=-.55;group.add(plate);
@@ -63,7 +63,9 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    button.addEventListener('pointerenter',()=>hover(space.id));button.addEventListener('pointerleave',()=>hover(null));button.addEventListener('focus',()=>hover(space.id));button.addEventListener('blur',()=>hover(null));
    labelLayer.append(button);labels.set(space.id,{button,space,outline,position:new THREE.Vector3(...sceneWorld(number,space.center,.82))});
   }
-  for(const [px,py,pw,ph] of f.source.stairs){const [x,z]=toWorld(f.source,px,py),w=pw*80/f.source.imageWidth,d=ph*80/f.source.imageWidth;for(let i=0;i<8;i++){const mesh=new THREE.Mesh(box,palette.stair);mesh.position.set(x+w/2,.04+i*.035,z+(i+.5)*d/8);mesh.scale.set(w,.08+i*.035,d/8*.84);group.add(mesh);}}
+  for(const [px,py,pw,ph] of f.source.stairs){const [x,z]=toWorld(f.source,px,py),w=pw*80/f.source.imageWidth,d=ph*80/f.source.imageWidth;for(let i=0;i<8;i++){const mesh=new THREE.Mesh(box,palette.stair);mesh.position.set(x+w/2,.04+i*.035,z+(i+.5)*d/8);mesh.scale.set(w,.08+i*.035,d/8*.84);group.add(mesh);}
+   // slim handrails keep the stair blocks readable as staircases, not stacked plates
+   for(const side of [-1,1]){const rail=new THREE.Mesh(box,palette.stairRail||palette.stair);rail.position.set(x+w/2+side*(w/2+.05),.36,z+d/2);rail.scale.set(.06,.72,d*1.02);group.add(rail);}}
   for(const landing of f.landings){const b=document.createElement('span');b.className='nav-stair-label';b.textContent='Лестница';b.hidden=true;labelLayer.append(b);stairLabels.push({button:b,number,position:new THREE.Vector3(...sceneWorld(number,landing.center,1))});}
   const label=document.createElement('button');label.style.setProperty('--floor-color','#'+floorColors[number-1].toString(16));label.className='nav-level-label';label.type='button';label.innerHTML=`<span>${number}</span><small>этаж</small>`;label.setAttribute('aria-label',`${number}-й этаж`);label.addEventListener('click',()=>onFloor(number));labelLayer.append(label);
   floorLabels.push({button:label,number,position:new THREE.Vector3(Math.min(...f.source.footprint.map(p=>toWorld(f.source,...p)[0]))+f.offset[0]-4,(number-1)*10+.6,7*depthScale)});
@@ -109,7 +111,9 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  function opacity(f,value){for(const m of Object.values(f.palette)){m.opacity=value;m.depthWrite=value>.5;}f.outlineMaterial.opacity=value;}
  async function setView(number,{animate=true,keepPreview=false}={}){
   if(!keepPreview)pausePreview();focusedRoom=null;clearSeatLabels();roomContext();const revision=++viewRevision;view=Number(number)||0;if(!view)topView=false;
-  container.dataset.floorView=String(view);container.dataset.projection=topView?'plan':'3d';hover(null);transitioning=true;container.setAttribute('aria-busy','true');turnMotion.cancel();motion.cancel();fit();
+  container.dataset.floorView=String(view);container.dataset.projection=topView?'plan':'3d';hover(null);
+  // In the plan projection low walls must not shade the corridor as long dark bands.
+  for(const [,fg] of floorGroups)fg.walls.scale.y=topView?.24:1;transitioning=true;container.setAttribute('aria-busy','true');turnMotion.cancel();motion.cancel();fit();
   const startShell=shellMix,endShell=isBuilding()?1:0,starts=new Map();for(const [n,f] of floorGroups){starts.set(n,f.group.visible?f.palette.plate.opacity:0);}setShell(startShell);
   routeVisibility();const target=new THREE.Vector3(isBuilding()&&container.clientWidth/container.clientHeight>=.7?-12:0,view?(view-1)*10:isBuilding()?5.5:20,0),portrait=container.clientWidth/container.clientHeight<.7;
   const offset=topView?new THREE.Vector3(0,80,.12):view?(portrait?new THREE.Vector3(52,60,8):new THREE.Vector3(18,55,46)):(isBuilding()?(portrait?new THREE.Vector3(64,53,28):new THREE.Vector3(35,31,65)):(portrait?new THREE.Vector3(70,58,8):new THREE.Vector3(30,45,75)));

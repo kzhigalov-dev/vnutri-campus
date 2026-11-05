@@ -20,7 +20,8 @@ export function createMaquetteProps({campus,box,material,track,textures}){
  function furnish(f,n,showcaseOnly=false){const root=new THREE.Group(),world=FLOOR_WORLDS[n-1];
   f.spaces.forEach((space,i)=>{const bounds=roomBounds(space.polygon),{x,z,w,d}=bounds;if(w<.22||d<.22)return;const pilot=pilotRoomBySpace(space.id),p=new THREE.Group();root.add(p);p.position.set(x,.13,z);p.userData.spaceId=space.id;activeRoomProps.set(space.id,p);const s=showcaseOnly?.88:Math.min(w/5.6,d/3.4,.5),kind=pilot?.style||world.kind;
    // Low cutaway partitions keep the furniture readable; an opening faces the corridor.
-   b(p,white,0,.74,-d*.46,w*.94,1.48,.055);b(p,white,-w*.46,.24,0,.055,.48,d*.9);b(p,white,w*.46,.24,-d*.2,.055,.48,d*.5);
+   // Panel height adapts to shallow rooms so it never reads as a long wall from above.
+   const backH=Math.min(1.48,.42+d*.32);b(p,white,0,backH/2,-d*.46,w*.94,backH,.055);b(p,white,-w*.46,.24,0,.055,.48,d*.9);b(p,white,w*.46,.24,-d*.2,.055,.48,d*.5);
    b(p,wood,-w*.23,.07,d*.44,w*.36,.14,.04);b(p,wood,w*.32,.07,d*.44,w*.23,.14,.04);
    if(pilot){
     const layout=seatLayout(kind,space.id);layout.forEach((seat,j)=>{const sx=seat.x*w,sz=seat.z*d;chair(p,sx,sz,s,seat.angle,space.id,j+1);if(['computers','quiet'].includes(kind)){const dz=seat.angle?-.15:.15;table(p,sx,sz+dz*d,s*.95,s*.65,s*.85);if(kind!=='quiet'){b(p,ink,sx,s*1.38,sz+dz*d,s*.7,s*.48,.035);b(p,glass,sx,s*1.38,sz+dz*d+.022,s*.59,s*.36,.01);b(p,white,sx,s*.91,sz+dz*d+s*.17,s*.55,.02,s*.16);}else{b(p,leaf,sx,s*1.15,sz+dz*d+s*.3,s*.95,s*.6,.04);c(p,ink,sx+s*.25,s*1.1,sz+dz*d,.025,s*.5,.025);c(p,white,sx+s*.25,s*1.37,sz+dz*d,s*.19,.05,s*.19);}}});
@@ -42,7 +43,7 @@ export function createMaquetteProps({campus,box,material,track,textures}){
   // The three wing heads are the floor's authored exhibition anchors. They are
   // deliberately larger than the compact archived rooms along the main spine.
   const perimeter=f.source.footprint.map(point=>toWorld(f.source,...point)),near=Math.min(...perimeter.map(p=>p[1]));
-  const heads=perimeter.map((a,i)=>[a,perimeter[(i+1)%perimeter.length]]).filter(([a,q])=>Math.abs(a[1]-q[1])<.3&&Math.abs(a[0]-q[0])>4&&Math.max(a[1],q[1])<near+1.5).slice(0,3);
+  const heads=perimeter.map((a,i)=>[a,perimeter[(i+1)%perimeter.length]]).filter(([a,q])=>Math.abs(a[1]-q[1])<.3&&Math.abs(a[0]-q[0])>4&&Math.abs(a[0]-q[0])<12&&Math.max(a[1],q[1])<near+1.5).slice(0,3);
   if(!showcaseOnly)heads.forEach(([a,q],j)=>{if(n===4&&j===2)return;const p=new THREE.Group();p.position.set((a[0]+q[0])/2,.12,(a[1]+q[1])/2+1.4);root.add(p);const width=Math.abs(a[0]-q[0])*.83;
    b(p,j===1?leaf:wood,0,.035,0,width,.07,2.4);
    if(n===1){if(j===0){b(p,coral,0,.62,0,width*.85,1.2,.7);b(p,white,0,1.25,0,width*.94,.08,.8);}else{for(let k=0;k<3;k++)poster(p,(k-1)*width*.3,-.6,width*.24,1.6);for(const x of [-width*.23,width*.23])c(p,coral,x,.26,.65,.45,.5,.32);}}
