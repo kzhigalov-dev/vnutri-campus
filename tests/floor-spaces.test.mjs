@@ -8,8 +8,11 @@ test('model indexes remain distinct from current room IDs and stay inside source
  const geometry=read('floor-geometry'),data=read('floor-spaces'),ids=new Set();let total=0;
  assert.equal(data.floors.length,5);
  for(const row of data.floors){const f=geometry.floors.find(f=>f.floor===row.floor);assert.ok(f);assert.ok(row.spaces.length>0);
-  for(const space of row.spaces){assert.equal(space.modernNumber,null);assert.equal(space.kind,'model-space');assert.match(space.label,new RegExp(`^П${row.floor}\\.\\d{2}$`));assert.ok(!ids.has(space.id));ids.add(space.id);assert.ok(pointInPolygon(space.center,space.polygon));for(const p of space.polygon)assert.ok([f.footprint,...(f.insets||[])].some(poly=>pointInPolygon(p,poly)),space.id);total++;}
- }assert.equal(total,149);
+  // floors 3 and 4 carry the modern room numbers from the 2026 wayfinding panels;
+  // floors 1, 2 and 5 keep the conditional archive model indices
+  const label=new RegExp(row.floor in {3:1,4:1}?'^\\d{3}([а-яa-z]|-\\d{3})?$':`^П${row.floor}\\.\\d{2}$`);
+  for(const space of row.spaces){assert.equal(space.modernNumber,null);assert.equal(space.kind,'model-space');assert.match(space.label,label);assert.ok(!ids.has(space.id));ids.add(space.id);assert.ok(pointInPolygon(space.center,space.polygon));for(const p of space.polygon)assert.ok([f.footprint,...(f.insets||[])].some(poly=>pointInPolygon(p,poly)),space.id);total++;}
+ }assert.equal(total,205);
 });
 test('every selectable space has a walkable entry within its own polygon',()=>{
  const geometry=read('floor-geometry');for(const row of read('floor-spaces').floors){const f=geometry.floors.find(f=>f.floor===row.floor),map=createWalkMap(f);for(const space of row.spaces){const polygon=space.polygon.map(p=>toWorld(f,...p)),point=map.nearest(toWorld(f,...space.center),{maxDistance:1.5,polygon});assert.ok(point,space.id);assert.ok(pointInPolygon(point,polygon));}}
