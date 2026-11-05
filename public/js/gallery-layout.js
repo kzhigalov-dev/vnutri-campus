@@ -6,7 +6,11 @@ export function prepareGalleryLayout(source,spaces){
  const scale=80/source.imageWidth,min=.45/scale,kept=[];
  for(const w of [...source.walls].sort((a,b)=>Math.hypot(b[2]-b[0],b[3]-b[1])-Math.hypot(a[2]-a[0],a[3]-a[1]))){if(Math.hypot(w[2]-w[0],w[3]-w[1])<min)continue;if(kept.some(k=>segmentDistance(w.slice(0,2),k.slice(0,2),k.slice(2,4))*scale<.16&&segmentDistance(w.slice(2,4),k.slice(0,2),k.slice(2,4))*scale<.16))continue;kept.push([...w]);}
  const polygons=[source.footprint,...(source.insets||[])],inside=p=>polygons.some(poly=>pointInPolygon(p,poly)),bottom=Math.max(...source.footprint.map(p=>p[1])),spineY=bottom-120,doors=[];
- for(const space of spaces){let ranked=[];for(const w of kept){const a=w.slice(0,2),b=w.slice(2,4),length=Math.hypot(b[0]-a[0],b[1]-a[1]);if(length*scale<.72)continue;const q=projection(space.center,a,b),distance=Math.hypot(q[0]-space.center[0],q[1]-space.center[1])*scale;if(distance>1.65||distance<.12)continue;const t=[(b[0]-a[0])/length,(b[1]-a[1])/length],n=[-t[1],t[0]],margin=.34/scale;if(Math.hypot(q[0]-a[0],q[1]-a[1])<margin||Math.hypot(q[0]-b[0],q[1]-b[1])<margin)continue;if(!inside([q[0]+n[0]*.32/scale,q[1]+n[1]*.32/scale])||!inside([q[0]-n[0]*.32/scale,q[1]-n[1]*.32/scale]))continue;const value=distance+Math.abs(q[1]-spineY)*scale*.25;ranked.push({value,q,t,n,wall:w});}
+ for(const space of spaces){
+  // Aggregated panel zones can be wider than an ordinary classroom. Search as
+  // far as their nearest boundary while keeping the same interior-only gate.
+  const nearestBoundary=Math.min(...space.polygon.map((p,i)=>segmentDistance(space.center,p,space.polygon[(i+1)%space.polygon.length])))*scale;
+  const doorReach=Math.max(1.65,nearestBoundary+.35);let ranked=[];for(const w of kept){const a=w.slice(0,2),b=w.slice(2,4),length=Math.hypot(b[0]-a[0],b[1]-a[1]);if(length*scale<.72)continue;const q=projection(space.center,a,b),distance=Math.hypot(q[0]-space.center[0],q[1]-space.center[1])*scale;if(distance>doorReach||distance<.12)continue;const t=[(b[0]-a[0])/length,(b[1]-a[1])/length],n=[-t[1],t[0]],margin=.34/scale;if(Math.hypot(q[0]-a[0],q[1]-a[1])<margin||Math.hypot(q[0]-b[0],q[1]-b[1])<margin)continue;if(!inside([q[0]+n[0]*.32/scale,q[1]+n[1]*.32/scale])||!inside([q[0]-n[0]*.32/scale,q[1]-n[1]*.32/scale]))continue;const value=distance+Math.abs(q[1]-spineY)*scale*.25;ranked.push({value,q,t,n,wall:w});}
   ranked.sort((a,b)=>a.value-b.value);
   // two openings per room when they sit on different walls: narrow rooms then
   // always reach the corridor even when the nearest wall is a party wall

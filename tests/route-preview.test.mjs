@@ -16,3 +16,9 @@ test('actual campus preview retains horizontal route legs and every vertical con
   for(const leg of p.legs.filter(l=>!l.connection)){const f=campus.floors.get(leg.from.floor),local=q=>[q[0]-f.offset[0],q[2]-f.offset[1]];assert.ok(f.map.segmentClear(local(leg.from.position),local(leg.to.position)));}
  }
 });
+
+test('returning to the same floor retains the distinct journey step',()=>{
+ const floors=[2,3,2],route={segments:floors.map(floor=>({floor,points:[[0,0],[2,0]]})),connections:[{fromFloor:2,toFloor:3,from:[2,0],to:[0,0]},{fromFloor:3,toFloor:2,from:[2,0],to:[0,0]}]};
+ const path=createRoutePreview(route,world);assert.equal(sampleRoutePreview(path,0).step,0);assert.equal(sampleRoutePreview(path,1).step,2);assert.equal(sampleRoutePreview(path,1).floor,2);
+ for(const leg of path.legs.filter(l=>!l.connection)){const sample=sampleRoutePreview(path,(leg.start+leg.end)/2/path.length);assert.equal(sample.step,leg.step);assert.equal(sample.floor,floors[sample.step]);}
+});

@@ -1,17 +1,16 @@
-"""Rebuild floors 3 and 4 geometry from the 2026 GUPTD wayfinding panel photos.
+"""Rebuild floors 2, 3 and 4 geometry from the 2026 GUPTD wayfinding panel photos.
 
 Author-authored room layout measured on the rectified panel photographs
 (research/voznesensky-44-46/signage/*.png). Rooms are simple rectangles in the
 rectified image pixel space; walls derive from room edges plus the footprint
-outline. Stairwell towers (omitted by the simplified panels) are merged into
-the footprint and their stair rects are snapped onto the retained BTI stair
-cores of floors 2/5 so vertical navigation keeps working (<= 2.5 world units,
-see campus-navigation.js).
+outline. Only panel-visible wings and stair cores are retained. Conditional
+archive/panel stair registration is separate graph metadata; no invented
+floor area is used to force metric alignment.
 Run: python3 scripts/build-signage-floors.py
 """
 from pathlib import Path
 import json, hashlib, math
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 GEO = ROOT / 'public/data/floor-geometry.json'
@@ -51,20 +50,18 @@ ROOMS_4 = [
     ('489', 3040, 152, 3150, 228),
     # hub rooms
     ('450', 1925, 152, 2010, 228), ('466', 1735, 260, 1855, 370), ('449', 1895, 260, 2000, 370),
-    ('444', 1725, 410, 1865, 540), ('448', 1865, 410, 2005, 540),
+    ('444', 1725, 410, 1865, 540), ('448', 1865, 565, 1995, 600),
     # wings
     ('425', 795, 260, 1050, 380), ('435', 795, 420, 1050, 540),
     ('484', 2725, 228, 2860, 358), ('486', 2895, 228, 3015, 285), ('485', 2895, 285, 3015, 358),
 ]
 
-# union outline including the west stair tower and the centre south tower
+# Panel outline with only its three visible transverse wings
 FOOTPRINT_4 = [
-    [95, 35], [3260, 35], [3395, 143], [3260, 248], [3015, 248], [3015, 612], [2725, 612],
-    [2725, 228], [2005, 228], [2005, 612], [1725, 612], [1725, 228], [1050, 228], [1050, 615],
-    [795, 615], [795, 228], [795, 380], [695, 380], [695, 228], [415, 228], [415, 320],
-    [355, 320], [355, 228], [100, 228], [100, 560], [5, 560], [5, 191], [5, 80],
+    [5,35],[3260,35],[3395,143],[3260,248],[3015,248],[3015,612],[2725,612],
+    [2725,228],[2005,228],[2005,612],[1725,612],[1725,228],[1050,228],[1050,615],
+    [795,615],[795,228],[5,228],
 ]
-TOWERS_4 = [[5, 228, 100, 560], [695, 228, 795, 380], [355, 228, 415, 320]]
 
 # ---------------------------------------------------------------- floor 3 ---
 # Rectified panel frame: 3400 x 673. Top rooms y15..105, corridor 105..140,
@@ -93,7 +90,7 @@ ROOMS_3 = [
     ('369', 2905, 140, 3130, 225),
     ('323', 765, 265, 890, 385), ('329', 890, 265, 990, 385), ('324', 755, 425, 950, 495),
     ('325', 730, 535, 950, 595), ('328', 730, 595, 950, 655),
-    ('340', 1830, 260, 1990, 380), ('342', 1730, 420, 2020, 550),
+    ('340-345', 1830, 260, 1990, 500), ('382-385', 1735, 565, 2015, 645),
     ('358', 2830, 260, 2950, 310), ('359', 2830, 310, 2950, 360), ('360', 2830, 360, 2950, 410),
     ('368', 2950, 260, 3050, 310), ('367', 2950, 310, 3050, 365), ('366', 2950, 365, 3050, 415),
     ('361', 2800, 415, 2950, 480), ('362', 2800, 480, 2950, 550), ('363', 2800, 550, 2950, 605),
@@ -101,11 +98,10 @@ ROOMS_3 = [
 ]
 
 FOOTPRINT_3 = [
-    [95, 15], [3230, 15], [3395, 120], [3230, 228], [3055, 228], [3055, 660], [2790, 660],
-    [2790, 228], [2020, 228], [2020, 660], [1730, 660], [1730, 228], [990, 228], [990, 660],
-    [730, 660], [730, 228], [135, 228], [135, 560], [5, 560], [5, 196], [5, 65],
+    [5,15],[3230,15],[3395,120],[3230,228],[3055,228],[3055,660],[2790,660],
+    [2790,228],[2020,228],[2020,660],[1730,660],[1730,228],[990,228],[990,660],
+    [730,660],[730,228],[5,228],
 ]
-TOWERS_3 = [[5, 228, 135, 560]]
 
 # booking pilot zones must stay on the same space ids (pilot-spaces.js):
 # chosen big rooms matching the data.js purposes
@@ -114,15 +110,6 @@ PILOT_SLOTS = [4, 8, 13, 20, 27, 31, 36, 39]
 
 IMAGE = {3: ('floor3-panel-close-rect.png', 3400, 673), 4: ('floor4-panel-close-rect.png', 3400, 646)}
 
-
-class Frame:
-    """toWorld port of public/js/geometry.js."""
-    def __init__(self, w, h):
-        self.w, self.h, self.s = w, h, 80.0 / w
-    def tw(self, x, y):
-        return [(x - self.w / 2) * self.s, (y - self.h / 2) * self.s]
-    def inv(self, wx, wz):
-        return [wx / self.s + self.w / 2, wz / self.s + self.h / 2]
 
 
 def build_walls(rooms, footprint):
@@ -197,7 +184,7 @@ def pip(x, z, poly):
     return inside
 
 
-def fit_rooms(rooms, footprint, towers):
+def fit_rooms(rooms, footprint):
     out = []
     for item in rooms:
         label, x1, y1, x2, y2 = item
@@ -226,73 +213,76 @@ def reorder_pilot(rooms):
     return out
 
 
+def build_floor2(geo):
+    """Photo-measured room bands. The isolated east wing has no direct passage.
+
+    Its room numbers 258–288 and 265–269 are reached through floor 3, as the
+    supplied sign explicitly says. Door positions and metric scale are authored.
+    """
+    w,h=3400,660
+    # Plan coordinates transcribed from the full-width photograph supplied by
+    # the user. Shared floor3/4 image frame makes the three wings align.
+    rooms=[]
+    def row(labels, xs, y1, y2):
+        for label,x1,x2 in zip(labels,xs,xs[1:]): rooms.append((label,x1,y1,x2,y2))
+    row(['211–220','210','209','207','206','205','204','203','202','201','200','243','242','243а','241'],
+        [15,440,520,600,1030,1080,1160,1290,1430,1510,1590,1690,1810,1870,2070,2140],15,108)
+    row(['281','282','283','284','285','286','287','288','258–264'],
+        [2190,2350,2450,2530,2610,2690,2780,2880,3010,3140],15,108)
+    row(['221','222','223','224','225'],[440,525,610,695,780,860],150,225)
+    row(['226','227','228','229–230','231','232'],[950,1150,1270,1390,1610,1690,1770],150,225)
+    row(['236','238','239'],[1870,1950,2030,2130],150,225)
+    row(['279','278','277','276','274','273','272'],[2190,2270,2350,2430,2510,2630,2740,2840],150,225)
+    rooms += [('290',2915,150,3040,225),('233',1770,270,1870,400),('235',1905,270,2010,400),
+              ('234',1770,440,2010,520),('254–257',1770,560,2010,635),
+              ('244–253',770,390,1040,635),('271',2740,275,2840,390),
+              ('291',2880,275,3025,390),('270',2740,435,2840,510),('265–269',2740,550,3025,635)]
+    fp=[[5,15],[3240,15],[3390,115],[3240,228],[3035,228],[3035,645],
+        [2730,645],[2730,228],[2020,228],[2020,645],[1760,645],[1760,228],
+        [1050,228],[1050,645],[760,645],[760,228],[5,228]]
+    full_fp=fp
+    rooms=[('258–264',3180,20,3230,105) if r[0]=='258–264' else r for r in rooms]
+    rooms=fit_rooms(rooms,full_fp)
+    # Separate the two signed circulation sectors; the eastern sector only
+    # connects by the observed stair pair through floor 3.
+    fp=[[5,15],[2160,15],[2160,228],[2020,228],[2020,645],[1760,645],[1760,228],[1050,228],[1050,645],[760,645],[760,228],[5,228]]
+    east=[[2190,15],[3140,15],[3140,228],[3035,228],[3035,645],[2730,645],[2730,228],[2190,228]]
+    walls=cut_door_gaps(dedupe_close(build_walls(rooms,fp)),rooms,fp)
+    # No horizontal passage from the 200–243 wing to 258–288: the sign says
+    # 'Через 3 этаж'. Keep the break sealed even when making room door gaps.
+    walls.append([2160,15,2160,228,T])
+    tip=[[3170,15],[3240,15],[3390,115],[3240,228],[3170,228]]
+    walls+=build_walls([],east)+build_walls([],tip)
+    stairs=[[875,240,55,35],[1790,230,55,35],[2940,430,55,55],[3250,125,55,40],[1765,520,55,35]]
+    source=SIGNAGE/'floor2-panel-original.png'
+    if not source.exists():
+        import shutil
+        shutil.copy('/var/folders/4h/g1pj4yyx29sdqstckm_36sxh0000gn/T/codex-clipboard-4818a779-fe3b-4408-83cb-9cd6c39ba06b.png',source)
+    # Perspective corrected crop, preserving the user's pixels (no redrawing).
+    image=Image.open(source).convert('RGB').transform((w,h),Image.Transform.QUAD,
+        (26,397,40,620,1248,615,1227,384),Image.Resampling.BICUBIC)
+    image.save(SIGNAGE/'floor2-panel-close-rect.png')
+    image.save(SIGNAGE/'floor2-plan-final.png')
+    out=ASSETS/'floor2-archive-plan.webp'
+    image.save(out,'WEBP',quality=90)
+    floor={'floor':2,'page':320,'imageWidth':w,'imageHeight':h,
+           'imageHash':hashlib.sha256(out.read_bytes()).hexdigest(),
+           'footprint':fp,'insets':[east,tip],'walls':walls,'stairs':stairs,
+           'sourceKind':'wayfinding-panel','sourceYear':2026,'navigationComponents':'local','stairNumbers':[4,3,1,2,5],
+           'navigationNote':'Восточная группа 258–288 и 265–269: проход через 3-й этаж по лестницам №1/№2. Связи этажей требуют натурной проверки.'}
+    return floor,rooms
+
 def main():
     geo = json.loads(GEO.read_text())
-    frames = {n: Frame(IMAGE[n][1], IMAGE[n][2]) for n in (3, 4)}
-    ref = frames[4]
-    ref_min = ref.tw(5, 0)[0]
-    ref_bottom = ref.tw(0, 615)[1]
-
-    # aligned world positions of the retained BTI stair cores (floors 2 and 5)
-    def aligned(n):
-        f = next(f for f in geo['floors'] if f['floor'] == n)
-        fr = Frame(f['imageWidth'], f['imageHeight'])
-        minx = min(p[0] for p in f['footprint'])
-        maxy = max(p[1] for p in f['footprint'])
-        ox = ref_min - fr.tw(minx, 0)[0]
-        oz = ref_bottom - fr.tw(0, maxy)[1]
-        out = []
-        for x, y, w, h in f['stairs']:
-            wx, wz = fr.tw(x + w / 2, y + h / 2)
-            out.append((wx + ox, wz + oz))
-        return out
-
-    targets2 = aligned(2)
-    targets5 = aligned(5)
-
-    rooms_by_floor = {3: fit_rooms(ROOMS_3, FOOTPRINT_3, TOWERS_3),
-                      4: fit_rooms(reorder_pilot(ROOMS_4), FOOTPRINT_4, TOWERS_4)}
+    rooms_by_floor = {3: fit_rooms(ROOMS_3, FOOTPRINT_3),
+                      4: fit_rooms(reorder_pilot(ROOMS_4), FOOTPRINT_4)}
     footprint_by_floor = {3: FOOTPRINT_3, 4: FOOTPRINT_4}
-    offset_by_floor = {}
-    for n in (3, 4):
-        fr, fp = frames[n], footprint_by_floor[n]
-        minx = min(p[0] for p in fp)
-        maxy = max(p[1] for p in fp)
-        offset_by_floor[n] = [ref_min - fr.tw(minx, 0)[0], ref_bottom - fr.tw(0, maxy)[1]]
-
-    # snap navigation stairs onto retained BTI stair cores; boxes are pixel
-    # search areas for the stair rect centre on the new floors.
-    boxes = {
-        3: [(5, 228, 135, 560), (1750, 240, 1830, 340)],
-        4: [(5, 228, 100, 560), (695, 228, 795, 380), (355, 228, 415, 320)],
+    # Only the five stair symbols visible on each panel are modelled. Archive
+    # registration lives in graph metadata; it must never alter floor area.
+    panel_stairs = {
+        3: [[880,425,55,45],[1748,232,45,24],[2960,425,70,70],[1760,525,55,35],[3325,105,35,35]],
+        4: [[880,565,60,48],[1740,232,50,24],[2915,400,60,55],[1760,525,55,35],[3325,105,35,35]],
     }
-    nav_stairs = {3: [], 4: []}
-    aligned_mine = {3: [], 4: []}
-    for n in (3, 4):
-        fr = frames[n]
-        off = offset_by_floor[n]
-        cands = list(targets2) if n == 3 else list(targets5) + aligned_mine[3]
-        for box in boxes[n]:
-            best = None
-            for t_i, (tx, tz) in enumerate(cands):
-                # target expressed in this floor's pixels (offset removed)
-                px, py = fr.inv(tx - off[0], tz - off[1])
-                cx = min(max(px, box[0] + 40), box[2] - 40)
-                cy = min(max(py, box[1] + 35), box[3] - 35)
-                d = math.hypot((cx - px) * fr.s, (cy - py) * fr.s)
-                if best is None or d < best[0]:
-                    best = (d, cx, cy, t_i, tx, tz)
-            d, cx, cy, t_i, tx, tz = best
-            rect = [int(cx - 30), int(cy - 27), 60, 55]
-            nav_stairs[n].append(rect)
-            wx, wz = fr.tw(cx, cy)
-            aligned_mine[n].append((wx + off[0], wz + off[1]))
-
-    icon_stairs = {
-        3: [[880, 240, 55, 22], [1905, 232, 45, 24], [1748, 232, 45, 24], [2960, 425, 70, 70]],
-        4: [[880, 565, 60, 48], [1740, 232, 50, 24], [1915, 375, 45, 30], [2915, 400, 60, 55]],
-    }
-
     new_floors = []
     report = {}
     for n in (3, 4):
@@ -300,19 +290,17 @@ def main():
         footprint = footprint_by_floor[n]
         name, w, h = IMAGE[n]
         img = Image.open(SIGNAGE / name).convert('RGB')
-        dr = ImageDraw.Draw(img)
-        for x1, y1, x2, y2 in (TOWERS_3 if n == 3 else TOWERS_4):
-            dr.rectangle([x1, y1, x2, y2], outline=(240, 240, 240), width=4)
         img.save(SIGNAGE / f'floor{n}-plan-final.png')
         out = ASSETS / f'floor{n}-archive-plan.webp'
         img.save(out, 'WEBP', quality=88)
         walls = cut_door_gaps(dedupe_close(build_walls(rooms, footprint)), rooms, footprint)
-        stairs = nav_stairs[n] + icon_stairs[n]
+        stairs = panel_stairs[n]
         new_floors.append({
             'floor': n, 'page': 318 + n, 'imageWidth': w, 'imageHeight': h,
             'imageHash': hashlib.sha256(out.read_bytes()).hexdigest(),
             'footprint': [list(p) for p in footprint], 'insets': [],
             'walls': walls, 'stairs': stairs,
+            'stairNumbers':[4,3,1,5,2], 'sourceKind':'wayfinding-panel','sourceYear':2026,
         })
         report[n] = {'rooms': len(rooms), 'walls': len(walls)}
 
@@ -321,11 +309,14 @@ def main():
         repl = next((nf for nf in new_floors if nf['floor'] == f['floor']), None)
         floors.append(repl if repl else f)
     floors.sort(key=lambda f: f['floor'])
+    floor2, rooms2 = build_floor2(geo)
+    floors = [floor2 if f['floor']==2 else f for f in floors]
     geo['floors'] = floors
-    geo['version'] = 2
-    geo['method'] = ('Floors 1, 2, 5: structural line tracing from the 2012 archive sheets. '
-                     'Floors 3, 4: author-measured rebuild from the 2026 GUPTD wayfinding panels '
-                     '(rectified photographs); stairwell towers aligned to the retained BTI stair cores. '
+    geo['version'] = 3
+    geo['stairRegistrations']=[{'fromFloor':1,'toFloor':2,'allowedPanelNumbers':[3,4,5],'illustrative':True,'basis':'Nearest unique archive/panel core registration; not surveyed'},{'fromFloor':4,'toFloor':5,'allowedPanelNumbers':[1,2,3,4,5],'illustrative':True,'basis':'Nearest unique archive/panel core registration; not surveyed'}]
+    geo['method'] = ('Floors 1, 5: structural line tracing from the 2012 archive sheets. '
+                     'Floors 2, 3, 4: author-measured rebuild from the 2026 GUPTD wayfinding panels '
+                     '(rectified photographs). Archive/panel cross-floor registration is illustrative metadata, never extra floor area. '
                      'Heights/details illustrative. Not a surveyed BIM.')
     GEO.write_text(json.dumps(geo, ensure_ascii=False, separators=(',', ':')))
 
@@ -338,22 +329,27 @@ def main():
                                'modernNumber': None, 'center': [(x1 + x2) // 2, (y1 + y2) // 2],
                                'polygon': [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]})
             row['spaces'] = spaces
-    sp['version'] = 2
-    sp['basis'] = ('Floors 1, 2, 5: 2012 archive sheets, conditional model indices. '
-                   'Floors 3, 4: 2026 GUPTD wayfinding panels; labels are modern room numbers.')
+    for row in sp['floors']:
+        if row['floor']==2:
+            row['spaces']=[{'id':f'f2-s{i}', 'label':label.replace('–','-'), 'kind':'model-space', 'modernNumber':None, 'center':[(x1+x2)//2,(y1+y2)//2], 'polygon':[[x1,y1],[x2,y1],[x2,y2],[x1,y2]]} for i,(label,x1,y1,x2,y2) in enumerate(rooms2,1)]
+    sp['version'] = 3
+    sp['basis'] = ('Floors 1, 5: 2012 archive sheets, conditional model indices. '
+                   'Floors 2, 3, 4: 2026 GUPTD wayfinding panels; labels are modern room numbers.')
     SPACES.write_text(json.dumps(sp, ensure_ascii=False, separators=(',', ':')))
+
+    labels_path=ROOT/'public/data/archive-labels.json'
+    labels=json.loads(labels_path.read_text())
+    for n, floor_rooms in [(2,rooms2),(3,rooms_by_floor[3]),(4,rooms_by_floor[4])]:
+        row=next(r for r in labels['floors'] if r['floor']==n)
+        width,height=(3400,660) if n==2 else IMAGE[n][1:]
+        row.update({'imageWidth':width,'imageHeight':height,'labels':[{'text':label.replace('–','-'),'x':(x1+x2)/2,'y':(y1+y2)/2,'kind':'room','source':'Навигационная панель, пользовательская фотография 2026; размеры и двери условные'} for label,x1,y1,x2,y2 in floor_rooms]})
+    labels['source']='Этажи 1 и 5: архив БТИ 2012. Этажи 2, 3, 4: навигационные панели, фотографии 2026 года; метрическая геометрия реконструирована автором.'
+    labels_path.write_text(json.dumps(labels,ensure_ascii=False,indent=1))
 
     f4 = next(r for r in sp['floors'] if r['floor'] == 4)
     pilots = {s['id']: s['label'] for s in f4['spaces'] if s['id'] in
               {f'f4-s{i}' for i in PILOT_SLOTS}}
-    check = {}
-    for n in (3, 4):
-        off = offset_by_floor[n]
-        check[n] = [tuple(round(v + o, 2) for v, o in zip(p, off)) for p in aligned_mine[n]]
-    print(json.dumps({'report': report, 'pilots': pilots,
-                      'targets2': [tuple(round(v, 2) for v in t) for t in targets2],
-                      'targets5': [tuple(round(v, 2) for v in t) for t in targets5],
-                      'mine3_aligned': check[3], 'mine4_aligned': check[4]}, ensure_ascii=False, indent=1))
+    print(json.dumps({'report':report,'pilots':pilots,'registration':'Illustrative archive/panel links stored separately from visible floor geometry'},ensure_ascii=False,indent=1))
 
 
 if __name__ == '__main__':
