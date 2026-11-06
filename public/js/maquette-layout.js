@@ -11,4 +11,4 @@ export function seatLayout(kind,spaceId){
  return Array.from({length:8},(_,i)=>{const col=i%4,row=Math.floor(i/4);if(spaceId==='f4-s13')return {seatId:i+1,x:(i%2-.5)*.54,z:(Math.floor(i/2)-1.5)*.2,angle:i%2?Math.PI/2:-Math.PI/2};if(spaceId==='f4-s36')return {seatId:i+1,x:(i%4-1.5)*.22,z:(row-.5)*.56,angle:row?Math.PI:0};if(kind==='reading')return {seatId:i+1,x:(i%2-.5)*.53,z:(Math.floor(i/2)-1.5)*.21,angle:i%2?Math.PI/2:-Math.PI/2};if(kind==='team'||kind==='lecture')return {seatId:i+1,x:(col-1.5)*.22,z:(row-.5)*.58,angle:row?Math.PI:0};if(kind==='quiet')return {seatId:i+1,x:(col-1.5)*.23,z:(row-.5)*.5,angle:0};return {seatId:i+1,x:(col-1.5)*.23,z:(row-.5)*.53,angle:row?Math.PI:0};});
 }
 // The same adapter is used by floor groups, DOM labels, route tubes and traveller samples.
-export function visualWorld(position,depthScale=2.2){return [position[0],position[1],position[2]*depthScale];}
+export function visualWorld(position,depthScale=2.2,reversePlan=false){const direction=reversePlan?-1:1;return [position[0]*direction,position[1],position[2]*depthScale*direction];}

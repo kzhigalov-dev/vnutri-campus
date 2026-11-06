@@ -53,6 +53,16 @@ export function createMaquetteProps({campus,box,material,track,textures}){
     if(kind==='reading'){for(const z of [-d*.23,0,d*.23]){c(p,ink,0,.48,z,.025,.4,.025);c(p,white,0,.7,z,.13,.07,.13);}shelf(p,0,-d*.4,w*.76,.8);table(p,0,0,w*.22,d*.7,s*.8);}
     if(kind==='design'){if(space.id==='f4-s8'){for(const z of [-d*.16,d*.16]){table(p,0,z,w*.82,d*.2,.3);for(let k=0;k<3;k++)b(p,[white,coral,glass][k],(k-1)*w*.22,.34,z,w*.18,.015,d*.13);}for(let k=0;k<3;k++)c(p,[white,wood,coral][k],w*.3,.62,-d*.36,(k+1)*.025,.75,(k+1)*.025);}else{b(p,white,0,.32,0,w*.8,.07,d*.35);for(let k=0;k<4;k++){const x=(k-1.5)*w*.21;b(p,ink,x,.42,0,w*.15,.15,.025);b(p,glass,x,.43,.02,w*.12,.1,.01);}}poster(p,-w*.23,-d*.42,w*.28);for(let j=0;j<3;j++)b(p,[coral,leaf,glass][j],w*.22,.2+j*.07,-d*.37,w*.23,.05,d*.15);}
     plant(p,w*.33,-d*.32,s*1.4);
+   }else if(n>1&&(i+n)%3!==2){
+    // Workrooms share a material language but carry floor-specific equipment.
+    for(const tx of [-w*.23,w*.23])for(const tz of [-d*.22,d*.22]){
+     table(p,tx,tz,w*.35,d*.24,.38);chair(p,tx,tz+d*.18,Math.min(s,.3),0);
+     if(n===4){b(p,ink,tx,.61,tz,w*.22,.36,.035);b(p,glass,tx,.61,tz+.025,w*.18,.27,.015);b(p,white,tx,.41,tz+d*.06,w*.20,.02,d*.07);}
+     else if(n===2){b(p,white,tx,.42,tz,w*.26,.025,d*.18);c(p,coral,tx-w*.08,.50,tz,w*.025,.17,d*.035);}
+     else if(n===3){b(p,white,tx,.42,tz,w*.27,.02,d*.18);b(p,glass,tx+w*.05,.435,tz,w*.09,.01,d*.08);}
+     else{b(p,white,tx,.44,tz,w*.2,.08,d*.15);b(p,glass,tx,.58,tz,w*.09,.22,d*.08);}
+    }
+    shelf(p,0,-d*.39,w*.65,.7);poster(p,0,-d*.43,w*.4,.7);
    }else if((i+n)%3===0){
     // Display plinths with sculptural forms and framed work.
     for(let j=0;j<3;j++){const px=(j-1)*w*.25;b(p,white,px,.22,0,w*.16,.44,d*.3);if(n===2)c(p,coral,px,.56,0,w*.06,.25,d*.09);else if(n===5)b(p,j%2?glass:coral,px,.58,0,w*.1,.25,d*.18,Math.PI/5);else ball(p,j%2?leaf:coral,px,.61,0,w*.085,.19,d*.15);}poster(p,0,-d*.42,w*.55);

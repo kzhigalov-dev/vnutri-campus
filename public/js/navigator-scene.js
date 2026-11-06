@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import {createFloorEnvelope} from './floor-envelope.js?v=20261106-floors1';
 import {OrbitControls} from '../vendor/OrbitControls.js';
 import {createMotion} from './navigation-motion.js';
 import {toWorld} from './geometry.js';
-import {createMaquetteProps} from './maquette-props.js?v=20261106-3';
+import {createMaquetteProps} from './maquette-props.js?v=20261106-floors1';
 import {createCampusExterior} from './campus-exterior.js?v=20261106-3';
-import {visualWorld,roomBounds} from './maquette-layout.js?v=20261030-11';
+import {visualWorld,roomBounds} from './maquette-layout.js?v=20261106-floors1';
 import {pilotRoomBySpace} from './pilot-spaces.js';
 import {createRoutePreview,sampleRoutePreview} from './route-preview.js?v=20261106-3';
 
@@ -26,7 +27,8 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  const preview=document.createElement('div');preview.className='nav-map-preview';preview.hidden=true;preview.setAttribute('role','tooltip');container.append(preview);
  let overviewMode='building',focusedRoom=null,chosenSpace=null,chosenSeatIds=new Set();const seatLabels=[];
  const depthScale=2.2;
- const sceneWorld=(floor,p,y=.12)=>visualWorld(campus.world(floor,p,y),depthScale);
+ const reversePlan=floor=>floor===1||floor===5;
+ const sceneWorld=(floor,p,y=.12)=>visualWorld(campus.world(floor,p,y),depthScale,reversePlan(floor));
  let selected=null,hovered=null,visible=new Set(campus.entries.keys()),availability=new Map(),view=0,topView=false;
  let routeGroup=null,traveller=null,previewPath=null,previewProgress=0,playing=false,previewFrame=null,previewTime=null;
  let disposed=false,failed=false,viewRevision=0,transitioning=false,portraitState=null,down;
@@ -42,18 +44,20 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  }
  function trackedGeometry(g){resources.add(g);return g;}
  for(const [number,f] of campus.floors){
-  const group=new THREE.Group();group.position.set(f.offset[0],(number-1)*10,f.offset[1]*depthScale);group.scale.z=depthScale;scene.add(group);
+  const group=new THREE.Group();group.position.set(f.offset[0],(number-1)*10,f.offset[1]*depthScale);group.scale.z=depthScale;if(reversePlan(number)){group.rotation.y=Math.PI;group.position.x*=-1;group.position.z*=-1;}scene.add(group);
   const palette={
-   plate:material({color:0xc9cbd0,roughness:.55,metalness:.05}),edge:material({color:0xc6b89e,roughness:.78,metalness:0}),
-   wall:material({color:0xe4dbc9,roughness:.82,metalness:0}),room:material({color:0xe0c7a6,roughness:.6}),
+   plate:material({color:0xe1e0d7,roughness:.55,metalness:.05}),edge:material({color:0xc6b89e,roughness:.78,metalness:0}),
+   wall:material({color:0xe4dbc9,roughness:.82,metalness:0}),
+   sill:material({color:number===1?0x646f72:0xc8c5b7,roughness:.82}),trim:material({color:0xe5e0d2,roughness:.82}),frame:material({color:0x60737b,roughness:.5,metalness:.15}),glass:material({color:0x9bbec9,roughness:.35,metalness:.15}),room:material({color:0xe3d4ba,roughness:.6}),
    free:material({color:0xc9b88d,roughness:.4}),selected:material({color:0xffc587,roughness:.38,emissive:0xe98d4b,emissiveIntensity:.16}),
    hover:material({color:0xb6a7d5,roughness:.4}),busy:material({map:hatchTexture,color:0xe0d8df,roughness:.8}),
    stair:material({color:0x99a4a5,roughness:.35,metalness:.12}),stairRail:material({color:0x7c8889,roughness:.5,metalness:.2})
   };
-  Object.values(palette).forEach(m=>{m.transparent=true;m.userData.baseOpacity=1;});
+  Object.values(palette).forEach(m=>{m.transparent=true;m.userData.baseOpacity=1;});palette.glass.userData.baseOpacity=.24;palette.glass.opacity=.24;
   const plate=new THREE.Mesh(shapeGeometry(f.source,[f.source.footprint,...(f.source.insets||[])],.55),[palette.plate,palette.edge]);plate.position.y=-.55;group.add(plate);
   const walls=new THREE.InstancedMesh(box,palette.wall,f.floor.walls.length),dummy=new THREE.Object3D();
-  f.floor.walls.forEach((s,i)=>{const a=toWorld(f.source,s[0],s[1]),b=toWorld(f.source,s[2],s[3]);const height=(a[1]+b[1])/2<0?1.9:.48;dummy.position.set((a[0]+b[0])/2,height/2,(a[1]+b[1])/2);dummy.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]);dummy.scale.set(Math.hypot(b[0]-a[0],b[1]-a[1]),height,Math.max(.06,s[4]*80/f.source.imageWidth));dummy.updateMatrix();walls.setMatrixAt(i,dummy.matrix);});group.add(walls);
+  f.floor.walls.forEach((s,i)=>{const a=toWorld(f.source,s[0],s[1]),b=toWorld(f.source,s[2],s[3]);const height=.76;dummy.position.set((a[0]+b[0])/2,height/2,(a[1]+b[1])/2);dummy.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]);dummy.scale.set(Math.hypot(b[0]-a[0],b[1]-a[1]),height,Math.max(.06,s[4]*80/f.source.imageWidth));dummy.updateMatrix();walls.setMatrixAt(i,dummy.matrix);});group.add(walls);
+  const envelope=createFloorEnvelope({source:f.source,box,palette});group.add(envelope.group);
   const outlineMaterial=new THREE.LineBasicMaterial({color:0xd5794f,transparent:true,opacity:1,depthTest:false});materials.add(outlineMaterial);
   const rims=[];
   for(const space of f.spaces){
@@ -69,8 +73,9 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    for(const side of [-1,1]){const rail=new THREE.Mesh(box,palette.stairRail||palette.stair);rail.position.set(x+w/2+side*(w/2+.05),.36,z+d/2);rail.scale.set(.06,.72,d*1.02);group.add(rail);}}
   for(const landing of f.landings){const b=document.createElement('span');b.className='nav-stair-label';b.textContent=landing.label||'Лестница';b.hidden=true;labelLayer.append(b);stairLabels.push({button:b,number,position:new THREE.Vector3(...sceneWorld(number,landing.center,1))});}
   const label=document.createElement('button');label.style.setProperty('--floor-color','#'+floorColors[number-1].toString(16));label.className='nav-level-label';label.type='button';label.innerHTML=`<span>${number}</span><small>этаж</small>`;label.setAttribute('aria-label',`${number}-й этаж`);label.addEventListener('click',()=>onFloor(number));labelLayer.append(label);
-  floorLabels.push({button:label,number,position:new THREE.Vector3(Math.min(...f.source.footprint.map(p=>toWorld(f.source,...p)[0]))+f.offset[0]-4,(number-1)*10+.6,7*depthScale)});
-  floorGroups.set(number,{group,palette,walls,plate,rims,outlineMaterial});
+  const displayBoundary=f.source.footprint.map(p=>sceneWorld(number,toWorld(f.source,...p),.6));
+  floorLabels.push({button:label,number,position:new THREE.Vector3(Math.max(...displayBoundary.map(p=>p[0]))+3,(number-1)*10+.6,7*depthScale)});
+  floorGroups.set(number,{group,palette,walls,plate,rims,outlineMaterial,envelope});
  }
  const decor=createMaquetteProps({campus,box,material,track:trackedGeometry,textures});
  for(const [n,f] of floorGroups){f.group.add(decor.floors.get(n));}
@@ -109,7 +114,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  function refresh(){decor.setVisible(visible,focusedRoom);decor.setAvailability(availability,selected);for(const [id,mesh] of roomMeshes){mesh.visible=visible.has(id)&&(!focusedRoom||id===focusedRoom);if(decor.roomProps.has(id))decor.roomProps.get(id).visible=visible.has(id)&&(!focusedRoom||id===focusedRoom);applyMaterial(id);const {button,space}=labels.get(id),pilot=pilotRoomBySpace(id),status=availability.get(id);button.classList.toggle('is-pilot',Boolean(pilot));button.classList.toggle('is-busy',status?.free===0);button.setAttribute('aria-pressed',String(id===selected));button.textContent=space.label+(pilot?` ${status?.free===0?'×':status?.free!=null?status.free+'/8':'○'}`:'');button.setAttribute('aria-label',`${space.label}${space.displayName?' · '+space.displayName:''}${pilot?' · '+(status?.text||'Пилотная зона'):''}`);}render();}
  function fit(){const aspect=container.clientWidth/(container.clientHeight||1);if(focusedRoom){const w=8*.78+7*.63,h=(8*.63+7*.78)*.75+1.3,half=Math.max(w/aspect,h)*.73;camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;camera.zoom=1;camera.updateProjectionMatrix();return;}const half=view?(aspect<.7?48:Math.max(14,46/aspect)):(aspect<.7?Math.max(43,28/aspect):Math.max(34,47/aspect));camera.left=-half*aspect;camera.right=half*aspect;const lift=matchMedia('(max-width:700px)').matches?half*.24:0;const framing=isBuilding()?Math.max(32,55/aspect):half;camera.left=-framing*aspect;camera.right=framing*aspect;camera.top=framing+lift;camera.bottom=-framing+lift;camera.updateProjectionMatrix();}
  function routeVisibility(){if(routeGroup)routeGroup.visible=!isBuilding()&&!focusedRoom;routeGroup?.traverse(o=>{if(o.userData.routeFloor)o.visible=!view||view===o.userData.routeFloor;if(o.userData.connection)o.visible=!view;});if(traveller){const p=sampleRoutePreview(previewPath,previewProgress);traveller.visible=Boolean(p&&(!view||p.floor===view));}}
- function opacity(f,value){for(const m of Object.values(f.palette)){m.opacity=value;m.depthWrite=value>.5;}f.outlineMaterial.opacity=value;}
+ function opacity(f,value){for(const m of Object.values(f.palette)){m.opacity=value*(m.userData.baseOpacity??1);m.depthWrite=m.opacity>.5;}f.outlineMaterial.opacity=value;}
  async function setView(number,{animate=true,keepPreview=false}={}){
   if(!keepPreview)pausePreview();focusedRoom=null;clearSeatLabels();roomContext();const revision=++viewRevision;view=Number(number)||0;if(!view)topView=false;
   container.dataset.floorView=String(view);container.dataset.projection=topView?'plan':'3d';hover(null);
@@ -117,7 +122,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   for(const [,fg] of floorGroups)fg.walls.scale.y=topView?.24:1;transitioning=true;container.setAttribute('aria-busy','true');turnMotion.cancel();motion.cancel();fit();
   const startShell=shellMix,endShell=isBuilding()?1:0,starts=new Map();for(const [n,f] of floorGroups){starts.set(n,f.group.visible?f.palette.plate.opacity:0);}setShell(startShell);
   routeVisibility();const target=new THREE.Vector3(isBuilding()&&container.clientWidth/container.clientHeight>=.7?9:0,view?(view-1)*10:isBuilding()?5.6:20,isBuilding()?-1.8:0),portrait=container.clientWidth/container.clientHeight<.7;
-  const offset=topView?new THREE.Vector3(0,80,.12):view?(portrait?new THREE.Vector3(52,60,8):new THREE.Vector3(18,55,46)):(isBuilding()?(portrait?new THREE.Vector3(-65,49,-35):new THREE.Vector3(-26,30,-76)):(portrait?new THREE.Vector3(70,58,8):new THREE.Vector3(30,45,75)));
+  const offset=topView?new THREE.Vector3(0,80,.12):(portrait?new THREE.Vector3(-65,49,-35):new THREE.Vector3(-26,48,-76));
   const to=target.clone().add(offset),from=camera.position.clone(),old=controls.target.clone(),zoom=camera.zoom,fromUp=camera.up.clone(),toUp=topView?(portrait?new THREE.Vector3(1,0,0):new THREE.Vector3(0,0,-1)):new THREE.Vector3(0,1,0);controls.enabled=false;
   await motion.run(t=>{setShell(startShell+(endShell-startShell)*t);for(const [n,f] of floorGroups){const end=!view||n===view?1:0;opacity(f,starts.get(n)+(end-starts.get(n))*t);}camera.up.lerpVectors(fromUp,toUp,t).normalize();camera.position.lerpVectors(from,to,t);controls.target.lerpVectors(old,target,t);camera.zoom=zoom+(1-zoom)*t;camera.updateProjectionMatrix();controls.update();render();},animate?(startShell!==endShell?900:620):0);
   if(revision!==viewRevision||disposed||failed)return;setShell(endShell);for(const [n,f] of floorGroups){f.group.visible=!focusedRoom&&!isBuilding()&&(!view||n===view);opacity(f,1);}transitioning=false;container.setAttribute('aria-busy','false');controls.enabled=true;controls.enableRotate=!topView;routeVisibility();render();
@@ -169,6 +174,6 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  return {setView,setOverviewMode(mode){overviewMode=mode==='spread'?'spread':'building';if(!view)setView(0);},setSeatSelection(spaceId,ids){chosenSpace=spaceId;chosenSeatIds=new Set(ids||[]);decor.setSeatSelection(spaceId,ids);decor.setAvailability(availability,selected);render();},focusRoom,setRoute,playPreview,pausePreview,seekPreview(value){pausePreview();setPreview(value);},setVisible(ids){visible=new Set(ids);if(hovered&&!visible.has(hovered))hover(null);refresh();},setAvailability(data){availability=data;refresh();},select(id,{focus=true}={}){const leaving=!id&&focusedRoom;selected=id;refresh();if(leaving)setView(view);else if(id&&focus)focusRoom(id);},
   setProjection(plan){topView=Boolean(plan);setView(view);},rotate(){if(topView)return;pausePreview();settle();const offset=camera.position.clone().sub(controls.target),from=Math.atan2(offset.x,offset.z),radius=Math.hypot(offset.x,offset.z);turnMotion.run(t=>{const angle=from+Math.PI/2*t;camera.position.set(controls.target.x+Math.sin(angle)*radius,camera.position.y,controls.target.z+Math.cos(angle)*radius);controls.update();render();},450);},
   zoom(factor){pausePreview();settle();camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,.5,focusedRoom?64:16);camera.updateProjectionMatrix();if(focusedRoom&&camera.zoom<.70)setView(view);else if(view&&camera.zoom<.70)onFloor(0);else render();},reset(){setView(view);},get view(){return view;},
-  dispose(){disposed=true;clearSeatLabels();pausePreview();motion.cancel();turnMotion.cancel();document.removeEventListener('visibilitychange',visibility);observer.disconnect();controls.dispose();clearRoute();exterior.dispose();decor.dispose();floorGroups.forEach(f=>f.walls.dispose());resources.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());labelLayer.remove();preview.remove();renderer.dispose();renderer.domElement.remove();}
+  dispose(){disposed=true;clearSeatLabels();pausePreview();motion.cancel();turnMotion.cancel();document.removeEventListener('visibilitychange',visibility);observer.disconnect();controls.dispose();clearRoute();exterior.dispose();decor.dispose();floorGroups.forEach(f=>{f.walls.dispose();f.envelope.dispose();});resources.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());labelLayer.remove();preview.remove();renderer.dispose();renderer.domElement.remove();}
  };
 }
