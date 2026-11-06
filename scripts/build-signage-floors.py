@@ -314,6 +314,9 @@ def main():
     geo['floors'] = floors
     geo['version'] = 3
     geo['stairRegistrations']=[{'fromFloor':1,'toFloor':2,'allowedPanelNumbers':[3,4,5],'illustrative':True,'basis':'Nearest unique archive/panel core registration; not surveyed'},{'fromFloor':4,'toFloor':5,'allowedPanelNumbers':[1,2,3,4,5],'illustrative':True,'basis':'Nearest unique archive/panel core registration; not surveyed'}]
+    geo['mainEntrance']={'floor':1,'stairIndex':1,'label':'Главная лестница у входа','basis':'User confirmed central entrance stair; explicit registration to panel stair 3.'}
+    geo['stairRegistrations'][0]['pairs']=[{'fromIndex':1,'toNumber':3}]
+    geo['stairRegistrations'][0]['basis']='Main entrance stair explicitly registered to panel stair 3; other archive cores illustrative, not surveyed'
     geo['method'] = ('Floors 1, 5: structural line tracing from the 2012 archive sheets. '
                      'Floors 2, 3, 4: author-measured rebuild from the 2026 GUPTD wayfinding panels '
                      '(rectified photographs). Archive/panel cross-floor registration is illustrative metadata, never extra floor area. '

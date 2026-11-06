@@ -44,3 +44,10 @@ test('archive to panel registration is explicit and never requires invented floo
  const without=structuredClone(geometry);delete without.stairRegistrations;
  const disconnected=createCampusNavigator(without,spaces);assert.equal(disconnected.route('start-1','f4-s4'),null);
 });
+
+test('default first-floor routes depart from the confirmed entrance stair and its explicit panel registration',()=>{
+ const c=createCampusNavigator(geometry,spaces),start=c.entries.get('start-1'),main=c.floors.get(1).landings.find(l=>l.isMain);
+ assert.equal(main.index,1);assert.deepEqual(start.point,main.point);assert.match(start.label,/Главная лестница/);
+ for(const n of [2,3,4,5]){let checked=0;for(const room of c.floors.get(n).spaces){const route=c.route(start.id,room.id);if(!route)continue;checked++;const exit=route.connections[0];assert.equal(exit.fromFloor,1);assert.equal(exit.toFloor,2);assert.equal(exit.stairNumber,3);assert.deepEqual(exit.from,main.point);}assert.ok(checked>0);}
+ const custom=c.floors.get(1).spaces.find(s=>s.point);assert.ok(c.route(custom.id,'f4-s8'));
+});

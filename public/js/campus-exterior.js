@@ -88,5 +88,5 @@ export function createCampusExterior({campus,box,material,track,textures,depthSc
  for(let x=entryX-2.4;x<=entryX+2.4;x+=.8)b(site,paint,x,-.255,streetZ-5,.42,.02,2.6);
  for(let x=streetLeft+1;x<streetRight;x+=3.2){if(Math.abs(x-entryX)<3)continue;b(site,base,x,.2,streetZ-3.3,.055,.7,.055);b(site,base,x+.8,.43,streetZ-3.3,1.6,.045,.045);}
  for(const [root,map] of batches)for(const [mat,items] of map){const mesh=new THREE.InstancedMesh(box,mat,items.length),dummy=new THREE.Object3D();items.forEach((v,i)=>{dummy.position.set(v.x,v.y,v.z);dummy.rotation.y=v.angle;dummy.scale.set(v.w,v.h,v.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});root.add(mesh);}
- return {facades,roof,site,front:{x:entryX,z:streetZ},bounds:{minX,maxX,minZ,maxZ},dispose(){for(const root of [...facades.values(),roof,site])root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
+ return {facades,roof,site,levelBases:tiers.map(t=>t.y),front:{x:entryX,z:streetZ},bounds:{minX,maxX,minZ,maxZ},dispose(){for(const root of [...facades.values(),roof,site])root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
 }

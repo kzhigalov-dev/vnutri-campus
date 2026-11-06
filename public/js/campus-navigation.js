@@ -13,6 +13,8 @@ export function createCampusNavigator(geometry,spaceData){
   // Archive sheets keep their original largest-component registration.
   source.stairs.forEach(([x,y,w,h],i)=>{const center=toWorld(source,x+w/2,y+h/2),point=map.nearest(center,{maxDistance:2.2,...(source.navigationComponents==='local'?{}:{component:map.largestComponent})});if(!point)return;const node={id:`stairs-${source.floor}-${i}`,label:source.stairNumbers?.[i]?`Лестница №${source.stairNumbers[i]}`:`Лестничное ядро`,floor:source.floor,point,center,index:i,number:source.stairNumbers?.[i]??null};f.landings.push(node);nodes.set(node.id,node);vertical.set(node.id,[]);});
  }
+ const entrance=geometry.mainEntrance,mainStair=entrance&&floors.get(entrance.floor)?.landings.find(l=>l.index===entrance.stairIndex);
+ if(mainStair){mainStair.isMain=true;mainStair.label=entrance.label;const start=entries.get(`start-${entrance.floor}`);if(start){start.point=[...mainStair.point];start.label=entrance.label+' · '+entrance.floor+'-й этаж';start.departureStairId=mainStair.id;}}
  for(let floor=1;floor<5;floor++){
   const a=floors.get(floor),b=floors.get(floor+1);if(!a||!b)continue;
   const panelA=a.source.sourceKind==='wayfinding-panel',panelB=b.source.sourceKind==='wayfinding-panel';
@@ -21,10 +23,10 @@ export function createCampusNavigator(geometry,spaceData){
   for(const x of a.landings)for(const y of b.landings){
    const d=Math.hypot(x.center[0]+a.offset[0]-y.center[0]-b.offset[0],x.center[1]+a.offset[1]-y.center[1]-b.offset[1]);
    if(panelA&&panelB){if(!x.number||x.number!==y.number)continue;candidates.push({x,y,d,registration:'panel-number',illustrative:d>2.5});}
-   else if(mixed){const panel=panelA?x:y;if(!registration||!registration.allowedPanelNumbers?.includes(panel.number))continue;candidates.push({x,y,d,registration:'archive-panel',illustrative:true});}
+   else if(mixed){const panel=panelA?x:y;if(!registration||!registration.allowedPanelNumbers?.includes(panel.number))continue;const pairs=registration.pairs||[],pinned=pairs.some(p=>p.fromIndex===x.index&&p.toNumber===y.number);if(!pinned&&pairs.some(p=>p.fromIndex===x.index||p.toNumber===y.number))continue;candidates.push({x,y,d,pinned,registration:'archive-panel',illustrative:true});}
    else if(d<=2.5)candidates.push({x,y,d,registration:'aligned-archive',illustrative:false});
   }
-  candidates.sort((a,b)=>a.d-b.d);const usedA=new Set(),usedB=new Set();
+  candidates.sort((a,b)=>Number(b.pinned||false)-Number(a.pinned||false)||a.d-b.d);const usedA=new Set(),usedB=new Set();
   for(const {x,y,d,registration,illustrative} of candidates){if(usedA.has(x.id)||usedB.has(y.id))continue;usedA.add(x.id);usedB.add(y.id);
    vertical.get(x.id).push({to:y.id,cost:7+d,registration,illustrative});vertical.get(y.id).push({to:x.id,cost:7+d,registration,illustrative});
   }
@@ -35,7 +37,7 @@ export function createCampusNavigator(geometry,spaceData){
   const graph=new Map(nodes);graph.set('__from',from);graph.set('__to',to);const dist=new Map([['__from',0]]),prev=new Map(),visited=new Set();
   while(true){let current=null,best=Infinity;for(const [id,d] of dist)if(!visited.has(id)&&d<best){best=d;current=id;}if(!current)break;if(current==='__to')break;visited.add(current);const a=graph.get(current),edges=[];
    for(const [id,b] of graph){if(id===current||id==='__from'||a.floor!==b.floor)continue;const path=local(a,b);if(path)edges.push({to:id,cost:length(path),path,floor:a.floor});}
-   for(const edge of vertical.get(current)||[])edges.push({...edge,connection:{fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index,stairNumber:a.number??graph.get(edge.to).number,registration:edge.registration,illustrative:edge.illustrative}});
+   for(const edge of vertical.get(current)||[]){if(from.departureStairId&&a.floor===from.floor&&current!==from.departureStairId)continue;edges.push({...edge,connection:{fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index,stairNumber:a.number??graph.get(edge.to).number,registration:edge.registration,illustrative:edge.illustrative}});}
    for(const edge of edges){const next=best+edge.cost;if(next<(dist.get(edge.to)??Infinity)){dist.set(edge.to,next);prev.set(edge.to,{id:current,edge});}}
   }
   if(!prev.has('__to'))return null;const edges=[];for(let id='__to';id!=='__from';){const previous=prev.get(id);if(!previous)return null;edges.push(previous.edge);id=previous.id;}edges.reverse();const segments=edges.filter(e=>e.path).map(e=>({floor:e.floor,points:e.path})),connections=edges.filter(e=>e.connection).map(e=>e.connection),order=[from.floor];for(const connection of connections)if(order.at(-1)!==connection.toFloor)order.push(connection.toFloor);if(order.at(-1)!==to.floor)order.push(to.floor);return {from,to,segments,connections,floors:order};

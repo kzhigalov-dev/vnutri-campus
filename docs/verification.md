@@ -154,3 +154,10 @@
 - Regular workrooms on floors2–5 gain desks/chairs and floor-specific authored material, drawing, computer or project equipment. Existing floor1 gallery/reception and all pilot-seat identities preserved. Envelope instances are explicitly disposed.
 -82 tests, TypeScript, JS syntax and diff checks pass. New check covers non-mirrored archive rotation; route endpoint/immutability check uses actual reversed display adapter. Browser1440×900 inspected allfivefloors and building, route1→4 seekEnd reaches target, warning/error log empty. Captures docs/screenshots/unified-floors/.
 - Published1764092 via successful Pages run42186696264. Public scene, envelope, layout, furniture, controller and entry byte-match local. Public fourth-floor view verified with empty error/warning log; proof docs/screenshots/unified-floors/published.jpg.
+
+## 2026-11-06 — building floor preview and entrance-stair routing
+
+- Building ray picking now previews the exact facade/roof floor: other shell levels fade, the selected floor's interior appears at the corresponding assembled height, and a tooltip names the floor. Click retains the existing smooth floor transition. Pointer leave/drag/navigation clears the preview and restores shell/level positions. Floor buttons expose the same preview on keyboard focus.
+- Fixed first-floor start: explicit mainEntrance metadata selects the central entrance landing, labels it and highlights its steps. Pinned archive→panel registration connects it to stair3 on floor2, before any nearest-core matching. Default start-1 routes must depart via that landing; manually chosen room origins are preserved. Generator retains this metadata.
+-83 tests and TypeScript pass; syntax/diff checks pass. Regression checks the start point and first stair connection of every available default route to floors2–5. Existing signed2→3→2 routes and no-implicit-registration checks pass.
+- Browser1440×900: native pointer movement onto facade selected3 then2; click opened2. Keyboard focus preview3 and blur restore verified. Main-stair→462 route labels/first-floor landmark and first instruction verified. No warning/error logs. Proof docs/screenshots/floor-hover/.
