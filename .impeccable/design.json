@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T01:00:00+03:00",
+  "title": "Design System: внутри.",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "context",
+        "value": "0 12px 36px #10283e2e",
+        "purpose": "Контекстные поверхности поверх модели."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action",
+      "html": "<button class=\"ds-primary\">Показать путь</button>",
+      "css": ".ds-primary{background:var(--canvas,#284b73);color:var(--paper,#f1ede2);border:0;border-radius:9px;padding:12px 18px;font:500 14px Golos,Arial,sans-serif}.ds-primary:hover{background:#365f8b}.ds-primary:focus-visible{outline:3px solid #e97861;outline-offset:3px}"
+    },
+    {
+      "name": "Search",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "Search",
+      "html": "<input class=\"ds-search\" aria-label=\"Найти кабинет\" placeholder=\"Найти кабинет или место\">",
+      "css": ".ds-search{height:46px;background:var(--paper,#f1ede2);color:var(--ink,#26303a);border:0;border-radius:12px;padding:0 14px;font:14px Golos,Arial,sans-serif}.ds-search:focus-visible{outline:2px solid #a8c6da;outline-offset:3px}"
+    },
+    {
+      "name": "Floor control",
+      "kind": "nav",
+      "refersTo": "floor-control",
+      "description": "Floor control",
+      "html": "<nav class=\"ds-floors\" aria-label=\"Этаж\"><button aria-pressed=\"false\">5</button><button aria-pressed=\"true\">4</button><button aria-pressed=\"false\">3</button></nav>",
+      "css": ".ds-floors{display:flex;gap:3px;background:#284b73;padding:8px}.ds-floors button{width:42px;height:42px;border:0;border-radius:10px;background:none;color:#cbd8e2;font:500 14px Golos,Arial,sans-serif}.ds-floors button[aria-pressed=true]{background:#f1ede2;color:#26303a}.ds-floors button:hover{background:#f1ede21a}.ds-floors button:focus-visible{outline:3px solid #e97861}"
+    },
+    {
+      "name": "Bookable room",
+      "kind": "chip",
+      "refersTo": "bookable-room",
+      "description": "Bookable room",
+      "html": "<button class=\"ds-room\">462 · 6/8</button>",
+      "css": ".ds-room{background:#dbe7d3;color:#263f30;border:0;border-radius:7px;padding:6px 10px;font:500 12px Golos,Arial,sans-serif}.ds-room:hover{background:#cbdcc1}.ds-room:focus-visible{outline:3px solid #e97861;outline-offset:3px}"
+    },
+    {
+      "name": "Room surface",
+      "kind": "card",
+      "refersTo": "room-surface",
+      "description": "Room surface",
+      "html": "<article class=\"ds-room-surface\"><h2>462</h2><p>Лаборатория компьютерной графики</p></article>",
+      "css": ".ds-room-surface{background:#f1ede2;color:#26303a;border-radius:14px;padding:25px;max-width:340px;font:14px/1.6 Golos,Arial,sans-serif;box-shadow:0 12px 36px #10283e2e}.ds-room-surface h2{font-size:48px;font-weight:500;letter-spacing:-.035em;margin:0}.ds-room-surface p{font-size:19px;line-height:1.4}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Открытый макет",
+    "overview": "Узнаваемое здание занимает основную сцену. Интерфейс остаётся набором точных инструментов вокруг него: поиск, этажи, масштаб и контекст выбранного кабинета.",
+    "keyCharacteristics": [
+      "Архитектура ведёт композицию.",
+      "Светлая поверхность обозначает инструмент или задачу.",
+      "Цвет выделяет состояние места, а не рекламный акцент."
+    ],
+    "rules": [],
+    "dos": [
+      "Оставлять здание главным визуальным объектом.",
+      "Поддерживать одинаковые состояния мыши и клавиатуры.",
+      "Сохранять доступность поиска и брони при отказе 3D."
+    ],
+    "donts": [
+      "Заменять карту рекламным первым экраном.",
+      "Добавлять одинаковые карточки ради заполнения пространства.",
+      "Использовать технические названия почтовых настроек как текст пользовательского действия."
+    ]
+  }
+}

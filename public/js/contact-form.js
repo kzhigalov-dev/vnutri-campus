@@ -15,6 +15,7 @@ const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({
 }[c]));
 
 async function sendEmailPayload(templateParams, statusEl, submitBtn, submitText, formEl) {
+  const originalLabel = submitText?.textContent || 'Отправить сообщение';
   const config = getEmailJSConfig();
   const hasKeys = Boolean(config.publicKey && config.serviceId && config.templateId);
 
@@ -33,7 +34,7 @@ async function sendEmailPayload(templateParams, statusEl, submitBtn, submitText,
       if (statusEl) {
         statusEl.hidden = false;
         statusEl.className = 'contact-status is-success';
-        statusEl.innerHTML = '<strong>Сообщение успешно отправлено!</strong> Копия направлена в ваш почтовый ящик.';
+        statusEl.innerHTML = '<strong>Сообщение отправлено.</strong>';
       }
       formEl.reset();
       const roomInput = formEl.querySelector('[name="room"]');
@@ -44,22 +45,21 @@ async function sendEmailPayload(templateParams, statusEl, submitBtn, submitText,
         statusEl.hidden = false;
         statusEl.className = 'contact-status is-info';
         statusEl.innerHTML = !hasKeys
-          ? '<strong>Данные формы проверены!</strong><br>Ключи EmailJS настраиваются в файле <code>public/js/emailjs-config.js</code>.'
-          : 'Библиотека EmailJS инициализируется, повторите попытку через секунду.';
+          ? 'Отправка пока недоступна. Текст сохранён в форме — попробуйте позже.'
+          : 'Сервис отправки ещё загружается. Повторите попытку через несколько секунд.';
       }
-      formEl.reset();
     }
   } catch (error) {
     console.error('Ошибка EmailJS:', error);
-    const errText = error?.text || error?.message || 'Не удалось отправить данные';
+    const errText = error?.text || error?.message || 'Не удалось отправить сообщение';
     if (statusEl) {
       statusEl.hidden = false;
       statusEl.className = 'contact-status is-error';
-      statusEl.innerHTML = `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Убедитесь, что в EmailJS аккаунт Gmail подключен (Connect Account), либо проверен пароль приложения.</small>`;
+      statusEl.innerHTML = `<strong>Ошибка отправки:</strong> ${escapeHTML(errText)}.<br><small>Текст остался в форме. Попробуйте отправить его позже.</small>`;
     }
   } finally {
     if (submitBtn) submitBtn.disabled = false;
-    if (submitText) submitText.textContent = 'Отправить через EmailJS';
+    if (submitText) submitText.textContent = originalLabel;
   }
 }
 
@@ -117,6 +117,11 @@ function bindForm(form) {
 }
 
 export function openContactModal(options = {}) {
+  document.getElementById('nav-project-menu')?.hidePopover?.();
+  if (typeof window.activateContactMode === 'function') {
+    window.activateContactMode(options);
+    return;
+  }
   const modal = document.getElementById('nav-contact-modal');
   if (modal) {
     if (options.room) {
@@ -164,7 +169,10 @@ export function openContactModal(options = {}) {
 /**
  * Инициализация всех форм на странице
  */
+let contactInitialized = false;
 export function initContactForm() {
+  if (contactInitialized) return;
+  contactInitialized = true;
   document.querySelectorAll('form.contact-form, #contact-form, #sidebar-contact-form, #feedback-page-form').forEach(bindForm);
 
   const modal = document.getElementById('nav-contact-modal');

@@ -22,7 +22,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  const fill=new THREE.DirectionalLight(0xbab7ec,1.1);fill.position.set(35,25,-30);scene.add(fill);
  const box=new THREE.BoxGeometry(1,1,1),floorGroups=new Map(),roomMeshes=new Map(),labels=new Map(),floorLabels=[],stairLabels=[];
  const resources=new Set([box]),materials=new Set(),textures=new Set(),labelLayer=document.createElement('div');
- labelLayer.className='nav-map-labels';container.append(labelLayer);const showcaseCaption=document.createElement('span');showcaseCaption.textContent='Авторский интерьер · 8 мест';Object.assign(showcaseCaption.style,{position:'absolute',left:'50%',bottom:'82px',transform:'translateX(-50%)',color:'#f0e9dc',font:'13px sans-serif',whiteSpace:'nowrap'});showcaseCaption.hidden=true;labelLayer.append(showcaseCaption);
+ labelLayer.className='nav-map-labels';container.append(labelLayer);const showcaseCaption=document.createElement('span');showcaseCaption.className='nav-showcase-caption';showcaseCaption.textContent='Авторский интерьер · 8 мест';Object.assign(showcaseCaption.style,{position:'absolute',left:'50%',bottom:'82px',transform:'translateX(-50%)',color:'#f0e9dc',font:'13px sans-serif',whiteSpace:'nowrap'});showcaseCaption.hidden=true;labelLayer.append(showcaseCaption);
  const preview=document.createElement('div');preview.className='nav-map-preview';preview.hidden=true;preview.setAttribute('role','tooltip');container.append(preview);
  let overviewMode='building',focusedRoom=null,chosenSpace=null,chosenSeatIds=new Set();const seatLabels=[];
  const depthScale=2.2;
@@ -152,7 +152,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   previewFrame=requestAnimationFrame(tick);
  }
  function settle(){viewRevision++;motion.cancel();turnMotion.cancel();transitioning=false;container.setAttribute('aria-busy','false');controls.enabled=true;controls.enableRotate=!topView;setShell(isBuilding()?1:0);for(const [n,f] of floorGroups){f.group.visible=!focusedRoom&&!isBuilding()&&(!view||n===view);opacity(f,1);}render();}
- function resize(){if(!container.clientWidth||!container.clientHeight)return;renderer.setSize(container.clientWidth,container.clientHeight,false);const portrait=container.clientWidth/container.clientHeight<.7;if(focusedRoom){portraitState=portrait;if(transitioning){settle();controls.target.set(0,30.38,0);camera.position.set(8,44.38,10);controls.update();}else turnMotion.cancel();fit();render();return;}if(portrait!==portraitState){portraitState=portrait;setView(view,{animate:false});}else{fit();render();}}
+ function resize(){if(!container.clientWidth||!container.clientHeight)return;renderer.setSize(container.clientWidth,container.clientHeight,false);const portrait=container.clientWidth/container.clientHeight<.7;if(focusedRoom){portraitState=portrait;if(transitioning){settle();controls.target.set(0,30.38,0);camera.position.set(8,44.38,10);controls.update();}else turnMotion.cancel();fit();render();return;}if(portrait!==portraitState){portraitState=portrait;if(transitioning){fit();render();}else setView(view,{animate:false});}else{fit();render();}}
  const observer=new ResizeObserver(resize);observer.observe(container);controls.addEventListener('change',render);
  controls.addEventListener('start',()=>{pausePreview();settle();hover(null);});
  controls.addEventListener('end',()=>{if(focusedRoom&&camera.zoom<.70)setView(view);else if(view&&camera.zoom<.70)onFloor(0);});
