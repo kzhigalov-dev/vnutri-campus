@@ -96,3 +96,73 @@ body{color:var(--paper)}.nav-sidebar,.nav-detail,.nav-route,.nav-modal,.nav-map-
 @media(max-width:700px){.nav-header{display:flex;height:68px;padding:13px 16px;gap:12px}.nav-brand{font-size:29px}.nav-search{position:static;margin-left:auto;width:42px;height:42px;padding:0 11px;box-shadow:none;border:0;background:var(--paper);color:var(--ink);flex-shrink:0}.nav-search:focus-within{position:absolute;left:16px;right:16px;top:13px;width:auto;background:var(--paper);z-index:3;padding:0 13px;outline:0}.nav-search:focus-within input{font-size:16px;height:42px}.nav-header nav{display:flex;gap:7px}.nav-header nav #nav-history-open{font-size:0;gap:0;min-width:26px}.nav-header nav #nav-history-open b{font-size:11px}.nav-header nav .nav-menu-toggle{width:36px;min-height:38px;border:0}.nav-header nav .nav-menu-toggle>.nav-icon{display:block;width:20px;height:20px}.nav-project-menu{top:61px;right:14px;width:250px}.nav-project-menu a{display:flex!important;font-size:13px!important}.nav-project-menu .nav-icon{display:block}.nav-app{height:calc(100dvh - 108px);min-height:320px}.nav-hero{top:18px;left:20px;max-width:230px}.nav-hero h1,.nav-app.is-open-model .nav-hero h1{font-size:27px;margin-bottom:9px}.nav-hero p{font-size:12px;line-height:1.5}.nav-hero-actions{bottom:66px;gap:24px}.nav-hero .nav-btn-primary{min-height:44px}.nav-map-top{top:28%;right:12px;transform:none}.nav-levels button{height:42px;min-width:40px}.nav-levels button:first-child{height:48px;margin-bottom:4px;font-size:9px}.nav-map-help{display:none}.nav-map-bottom{bottom:80px;right:16px;left:20px}.nav-map-zoom{padding:3px}.nav-map-zoom button{width:32px;height:34px}.nav-footer{height:40px;font-size:10px;line-height:1.5;padding:3px 16px;gap:12px}.nav-footer>span{max-width:220px}.nav-footer>a{max-width:100px}.nav-sidebar{position:fixed;top:68px;left:12px;right:12px;transform:none;width:auto;max-height:calc(100dvh - 82px)}.nav-sidebar-top{padding:22px 18px 12px}.nav-detail,.nav-route{top:auto;bottom:0;left:0;right:0;width:auto;padding:23px 22px calc(24px + env(safe-area-inset-bottom));max-height:45dvh}.nav-detail.is-booking,.nav-route{max-height:78dvh}.nav-app.has-context .nav-map-top{display:none}.nav-room-label{font-size:10px}.nav-level-label{width:36px;height:42px}.nav-toggle{bottom:12px}.nav-seat small{font-size:10px}}
 
 @media(max-width:700px){.nav-map-area:has(>aside:not([hidden])) .nav-map{right:0}.nav-app.has-context .nav-map{bottom:45dvh}.nav-detail.is-booking,.nav-route{max-height:65dvh}.nav-app:has(.nav-detail.is-booking:not([hidden])) .nav-map,.nav-app:has(.nav-route:not([hidden])) .nav-map{bottom:65dvh}.nav-showcase-caption{bottom:8px!important;font-size:11px!important}}
+
+.nav-route .nav-route-step{font-size:14px}
+.nav-route li .nav-stair-button{display:block;color:var(--canvas);font-weight:600}
+.nav-route[data-focused-stair] h2{margin-top:0;margin-right:0}
+.nav-app:has(.nav-route[data-focused-stair]:not([hidden])) .nav-hero{display:none}
+.nav-app:has(.nav-route[data-focused-stair]:not([hidden])) #nav-projection{display:none}
+.nav-stair-endpoint{z-index:1;padding:4px 8px;font-size:12px}
+.nav-modes{flex-wrap:wrap;column-gap:14px;row-gap:0}
+.nav-service{padding:14px 9px 16px;border-bottom:1px solid var(--line)}
+.nav-service h3{font-size:16px;line-height:1.4;margin:0 0 6px;color:var(--ink)}
+.nav-service p{font-size:13px;line-height:1.5;margin:4px 0;color:var(--muted)}
+.nav-service-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin-top:8px}
+.nav-service-actions a:not(.nav-btn){color:var(--canvas);font-size:12px;padding-block:12px}
+.nav-start-share{min-height:40px}
+.nav-work-filters:not([hidden]){display:grid;grid-template-columns:minmax(68px,1fr) minmax(0,2fr);gap:6px 10px}
+.nav-work-filters{border:0;padding:0;margin:0 0 12px}
+.nav-work-filters legend{font-size:13px;font-weight:600;margin-bottom:6px}
+.nav-work-filters label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.nav-work-filters select{width:100%;min-height:38px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink)}
+.nav-work-filters p{grid-column:1/-1;margin:3px 0 0;font-size:12px;color:var(--muted)}
+.nav-work-filters p:empty{display:none}
+.nav-map-version{position:absolute;z-index:5;top:5px;left:50%;transform:translateX(-50%);width:max-content;max-width:90%;margin:0;padding:6px 10px;border-radius:6px;background:var(--paper);color:var(--ink);font-size:12px;pointer-events:none}
+@media(max-width:700px){
+ .nav-app:has(.nav-route:not([hidden])){--nav-route-height:50dvh}
+ .nav-app:has(.nav-route[data-focused-stair]:not([hidden])){--nav-route-height:28dvh}
+ .nav-app:has(.nav-route:not([hidden])) .nav-map{bottom:var(--nav-route-height)}
+ .nav-app:has(.nav-route:not([hidden])) .nav-map-bottom{bottom:calc(var(--nav-route-height) + 12px)}
+ .nav-app .nav-route{max-height:var(--nav-route-height,50dvh)}
+ .nav-route[data-focused-stair]{padding-block:16px}
+ .nav-route[data-focused-stair] h2{margin-bottom:4px}
+ .nav-route[data-focused-stair] p{margin-block:4px 8px}
+}
+
+/* Shared interaction refinements for the navigation tools. */
+.nav-search{transition:box-shadow .18s ease,background-color .18s ease}
+.nav-search:hover{background:#faf8f1}
+.nav-search:focus-within{box-shadow:0 0 0 3px #cbd8e266,0 5px 18px #10283e24}
+.nav-modes{gap:0 18px}
+.nav-modes button{position:relative;color:var(--muted);transition:color .15s ease,border-color .15s ease}
+.nav-modes button:hover,.nav-modes button[aria-pressed=true]{color:var(--canvas)}
+.nav-modes button[aria-pressed=true]{font-weight:650}
+.nav-result{transition:background-color .15s ease}
+.nav-result:focus-visible{outline:3px solid var(--coral);outline-offset:-3px}
+.nav-result[aria-pressed=true]{background:#dce7e8}
+.nav-start span{min-width:54px}
+.nav-start-share{margin:-4px 0 8px}
+.nav-service{padding:16px 9px 18px}
+.nav-service h3{font-weight:600}
+.nav-btn,.nav-levels button,.nav-map-zoom button,.nav-close,.nav-sidebar-close{transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.nav-detail,.nav-route{overscroll-behavior:contain}
+.contact-label{font-size:12px}
+.contact-label input,.contact-label select,.contact-label textarea{font-size:13px}
+.contact-label textarea:focus-visible{outline:3px solid var(--coral);outline-offset:3px}
+@media(max-width:700px){
+ .nav-map-zoom button{width:40px;height:40px}
+ .nav-map-zoom{gap:1px}
+ .nav-sidebar{overscroll-behavior:contain}
+ .nav-modes{gap:0 16px}
+ .nav-modes button{min-height:44px}
+ .nav-result{min-height:64px}
+ .nav-detail,.nav-route{border-radius:18px 18px 0 0}
+ .contact-label input,.contact-label select,.contact-label textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){.nav-search,.nav-modes button,.nav-result,.nav-btn,.nav-levels button,.nav-map-zoom button,.nav-close,.nav-sidebar-close{transition:none}}
+@media(max-width:700px){
+ /* Keep the results reachable when filters take most of a short viewport. */
+ .nav-sidebar{overflow-y:auto}
+ .nav-sidebar-top{flex:none}
+ .nav-result-scroll{flex:none;min-height:0;max-height:none;overflow:visible}
+}

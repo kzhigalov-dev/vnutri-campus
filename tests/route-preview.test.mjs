@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRoutePreview,sampleRoutePreview} from '../public/js/route-preview.js';
+import {buildRouteStair} from '../public/js/route-stair.js';
 const world=(floor,p,y)=>[p[0],(floor-1)*10+y,p[1]];
 for(const [from,to] of [[1,4],[5,2]])test(`preview follows every waypoint and stair on ${from}→${to}`,()=>{
  const dir=Math.sign(to-from),floors=Array.from({length:Math.abs(to-from)+1},(_,i)=>from+i*dir);
@@ -21,4 +22,44 @@ test('returning to the same floor retains the distinct journey step',()=>{
  const floors=[2,3,2],route={segments:floors.map(floor=>({floor,points:[[0,0],[2,0]]})),connections:[{fromFloor:2,toFloor:3,from:[2,0],to:[0,0]},{fromFloor:3,toFloor:2,from:[2,0],to:[0,0]}]};
  const path=createRoutePreview(route,world);assert.equal(sampleRoutePreview(path,0).step,0);assert.equal(sampleRoutePreview(path,1).step,2);assert.equal(sampleRoutePreview(path,1).floor,2);
  for(const leg of path.legs.filter(l=>!l.connection)){const sample=sampleRoutePreview(path,(leg.start+leg.end)/2/path.length);assert.equal(sample.step,leg.step);assert.equal(sample.floor,floors[sample.step]);}
+});
+
+for(const [fromFloor,toFloor] of [[1,2],[2,1]])test(`preview follows the full stair path on ${fromFloor}→${toFloor}`,()=>{
+ const connection={fromFloor,toFloor,from:[0,0],to:[0,0]};
+ const stair=buildRouteStair(connection,world);
+ const points=stair.path.map(([x,y,z])=>[x,y+.09,z]);
+ const route={segments:[{floor:toFloor,points:[[0,0],[2,0]]}],connections:[connection]};
+ const path=createRoutePreview(route,world,()=>points);
+ const flights=path.legs.filter(leg=>leg.connection);
+ assert.deepEqual(flights.map(leg=>leg.to.position),points.slice(1));
+ assert.deepEqual(path.start.position,points[0]);
+ for(const leg of flights){
+  const sample=sampleRoutePreview(path,(leg.start+leg.end)/2/path.length);
+  assert.equal(sample.floor,fromFloor);
+  assert.equal(sample.toFloor,toFloor);
+  assert.equal(sample.step,0);
+ }
+ const arrival=sampleRoutePreview(path,1);
+ assert.deepEqual(arrival.position,world(toFloor,[2,0],.27));
+ assert.equal(arrival.step,1);
+ assert.equal(arrival.floor,toFloor);
+});
+
+test('floor instructions follow substantial plan bends and the actual connection',async()=>{
+ const {routeFloorInstruction}=await import('../public/js/route-preview.js');
+ const route={from:{},floors:[2,3],segments:[{floor:2,points:[[0,0],[2,0],[2,2],[4,2]]},{floor:3,points:[[0,0],[3,0]]}],connections:[{fromFloor:2,toFloor:3,stairNumber:4}]};
+ assert.equal(routeFloorInstruction(route,0),'По линии маршрута: поверните направо, затем поверните налево. К лестнице №4 · перейти на 3-й этаж');
+ assert.equal(routeFloorInstruction(route,1),'По проходам к выбранному помещению');
+});
+test('instructions omit uncertain bends and do not attribute repeated floors to the wrong visit',async()=>{
+ const {routeFloorInstruction}=await import('../public/js/route-preview.js');
+ const route={from:{departureStairId:'stairs-2-1'},floors:[2,3,2],segments:[{floor:2,points:[[0,0],[2,0],[2,.2],[4,.2]]},{floor:3,points:[[0,0],[1,0]]},{floor:2,points:[[0,0],[2,0],[2,2]]}],connections:[{toFloor:3},{toFloor:2,stairNumber:5}]};
+ assert.equal(routeFloorInstruction(route,0),'По главной лестнице на 3-й этаж');
+ assert.equal(routeFloorInstruction(route,1),'К лестнице №5 · перейти на 2-й этаж');
+ assert.equal(routeFloorInstruction(route,2),'По проходам к выбранному помещению');
+ assert.equal(routeFloorInstruction(route,3),'');
+ const noisy={from:{},floors:[1],segments:[{floor:1,points:[[0,0],[2,0],[2,.2],[4,.2]]}],connections:[]};
+ assert.equal(routeFloorInstruction(noisy,0),'По проходам к выбранному помещению');
+ const mixed={from:{},floors:[1],segments:[{floor:1,points:[[0,0],[2,0],[2,2],[4,2],[4,2.2],[6,2.2]]}],connections:[]};
+ assert.equal(routeFloorInstruction(mixed,0),'По проходам к выбранному помещению');
 });

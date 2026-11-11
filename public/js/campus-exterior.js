@@ -10,8 +10,11 @@ export function createCampusExterior({campus,box,material,track,textures,depthSc
  const minX=Math.min(...points.map(p=>p[0])),maxX=Math.max(...points.map(p=>p[0])),minZ=Math.min(...points.map(p=>p[1])),maxZ=Math.max(...points.map(p=>p[1]));
  const streetEdges=points.map((p,i)=>[p,points[(i+1)%points.length]]).filter(([a,b])=>Math.abs(a[1]-b[1])<.2).sort((a,b)=>Math.abs(b[1][0]-b[0][0])-Math.abs(a[1][0]-a[0][0]));
  const street=streetEdges[0],streetLeft=Math.min(street[0][0],street[1][0]),streetRight=Math.max(street[0][0],street[1][0]),streetZ=(street[0][1]+street[1][1])/2;
- const width=streetRight-streetLeft,entryX=streetLeft+width*.29;
- const stone=material({color:0xc9c8bb,roughness:.9}),stoneLight=material({color:0xe0ddd0,roughness:.82}),joints=material({color:0xaaa99d,roughness:1}),base=material({color:0x454c4c,roughness:.87}),frame=material({color:0x4f554f,metalness:.28,roughness:.48}),glass=material({color:0x608087,metalness:.28,roughness:.3}),lit=material({color:0xc4b88e,emissive:0xa88b51,emissiveIntensity:.22,roughness:.5}),roofMat=material({color:0x59635e,metalness:.4,roughness:.7}),copper=material({color:0x6f8e80,metalness:.55,roughness:.7}),paving=material({color:0xb6b8b1,roughness:1}),asphalt=material({color:0x3d5061,roughness:1}),paint=material({color:0xd7d4c4,roughness:1}),batches=new Map();
+ const width=streetRight-streetLeft;
+ const glazedBays=[.29,.73].map(fraction=>streetLeft+width*fraction);
+ // From the avenue, the canopy sits beneath the bay nearest the bevelled corner.
+ const entryX=glazedBays[1];
+ const stone=material({color:0xc9c8bb,roughness:.9}),stoneLight=material({color:0xe0ddd0,roughness:.82}),joints=material({color:0xaaa99d,roughness:1}),base=material({color:0x454c4c,roughness:.87}),frame=material({color:0x4f554f,metalness:.28,roughness:.48}),glass=material({color:0x608087,metalness:.28,roughness:.3}),lit=material({color:0xc4b88e,emissive:0xa88b51,emissiveIntensity:.22,roughness:.5}),roofMat=material({color:0x59635e,metalness:.4,roughness:.7}),copper=material({color:0x6f8e80,metalness:.55,roughness:.7}),paving=material({color:0xb6b8b1,roughness:1}),asphalt=material({color:0x65717b,roughness:1}),batches=new Map();
  const facades=new Map(),roof=new THREE.Group(),site=new THREE.Group();roof.userData.floor=5;
  function b(parent,mat,x,y,z,w,h,d,angle=0){let batch=batches.get(parent);if(!batch){batch=new Map();batches.set(parent,batch);}if(!batch.has(mat))batch.set(mat,[]);batch.get(mat).push({x,y,z,w,h,d,angle});}
  function plane(parent,canvas,x,y,z,w,h,ry=0){const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;textures.add(texture);const mesh=new THREE.Mesh(track(new THREE.PlaneGeometry(w,h)),material({map:texture,transparent:true,roughness:.8}));mesh.position.set(x,y,z);mesh.rotation.y=ry;parent.add(mesh);}
@@ -33,7 +36,7 @@ export function createCampusExterior({campus,box,material,track,textures,depthSc
    for(let j=0;j<count;j++){
     const x=(j+.5)*spacing-length/2;
     if(front){
-     const wx=edge.position.x+x,nearBay=[streetLeft+width*.29,streetLeft+width*.73].some(v=>Math.abs(wx-v)<width*.044),nearEntry=Math.abs(wx-entryX)<2;
+     const wx=edge.position.x+x*Math.cos(edge.rotation.y),nearBay=glazedBays.some(v=>Math.abs(wx-v)<width*.044),nearEntry=Math.abs(wx-entryX)<2.5;
      if(n===1){if(nearEntry)continue;window(edge,x,1.35,spacing*.78,2.12,-.18,j%7===2);}
      else if(!nearBay){window(edge,x,y+h*.51,spacing*.56,1.5,-.18,(j+n*3)%11===0);}
     }else{
@@ -47,8 +50,8 @@ export function createCampusExterior({campus,box,material,track,textures,depthSc
    if(front){
     // Quiet stone-course joints, recessed panels and two monumental glazed bays.
     for(let k=1;k<4;k++)b(edge,joints,0,y+h*k/4,-.15,length,.012,.012);
-    if(n>1)for(const wx of [streetLeft+width*.29,streetLeft+width*.73]){
-     const x=wx-edge.position.x,bw=width*.084;
+    if(n>1)for(const wx of glazedBays){
+     const x=(wx-edge.position.x)*Math.cos(edge.rotation.y),bw=width*.084;
      b(edge,base,x,y+h/2,-.18,bw-.24,h,.05);b(edge,glass,x,y+h/2,-.22,bw-.48,h-.18,.035);
      for(let k=0;k<=4;k++)b(edge,stoneLight,x-bw/2+k*bw/4,y+h/2,-.3,.09,h,.13);
      b(edge,stoneLight,x,y,-.3,bw,.14,.13);b(edge,stoneLight,x,y+h*.5,-.29,bw,.065,.1);
@@ -85,8 +88,7 @@ export function createCampusExterior({campus,box,material,track,textures,depthSc
  b(site,paving,(streetLeft+streetRight)/2,-.19,streetZ-2.05,width+3,.16,3.7);
  b(site,asphalt,(streetLeft+streetRight)/2,-.3,streetZ-5.1,width+5,.06,3.1);
  b(site,stoneLight,(streetLeft+streetRight)/2,-.17,streetZ-3.95,width+3,.14,.16);
- for(let x=entryX-2.4;x<=entryX+2.4;x+=.8)b(site,paint,x,-.255,streetZ-5,.42,.02,2.6);
  for(let x=streetLeft+1;x<streetRight;x+=3.2){if(Math.abs(x-entryX)<3)continue;b(site,base,x,.2,streetZ-3.3,.055,.7,.055);b(site,base,x+.8,.43,streetZ-3.3,1.6,.045,.045);}
  for(const [root,map] of batches)for(const [mat,items] of map){const mesh=new THREE.InstancedMesh(box,mat,items.length),dummy=new THREE.Object3D();items.forEach((v,i)=>{dummy.position.set(v.x,v.y,v.z);dummy.rotation.y=v.angle;dummy.scale.set(v.w,v.h,v.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});root.add(mesh);}
- return {facades,roof,site,levelBases:tiers.map(t=>t.y),front:{x:entryX,z:streetZ},bounds:{minX,maxX,minZ,maxZ},dispose(){for(const root of [...facades.values(),roof,site])root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
+ return {facades,roof,site,levelBases:tiers.map(t=>t.y),entrance:{x:entryX,z:streetZ-1.72},front:{x:(streetLeft+streetRight)/2,z:streetZ},bounds:{minX,maxX,minZ,maxZ},dispose(){for(const root of [...facades.values(),roof,site])root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
 }

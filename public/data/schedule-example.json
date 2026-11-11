@@ -1,0 +1,12 @@
+[
+  {
+    "date": "2026-11-12",
+    "start": "14:00",
+    "end": "15:30",
+    "title": "Пример перенесённого занятия",
+    "status": "moved",
+    "building": "voznesensky",
+    "previousRoom": "459",
+    "room": "462"
+  }
+]

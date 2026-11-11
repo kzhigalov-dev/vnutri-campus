@@ -51,3 +51,73 @@ test('default first-floor routes depart from the confirmed entrance stair and it
  for(const n of [2,3,4,5]){let checked=0;for(const room of c.floors.get(n).spaces){const route=c.route(start.id,room.id);if(!route)continue;checked++;const exit=route.connections[0];assert.equal(exit.fromFloor,1);assert.equal(exit.toFloor,2);assert.equal(exit.stairNumber,3);assert.deepEqual(exit.from,main.point);}assert.ok(checked>0);}
  const custom=c.floors.get(1).spaces.find(s=>s.point);assert.ok(c.route(custom.id,'f4-s8'));
 });
+
+test('published closure reroutes both directions and does not mutate the graph',()=>{
+ const c=createCampusNavigator(geometry,spaces),from=c.floors.get(2).spaces.find(s=>s.label==='201'),to=c.floors.get(3).spaces.find(s=>s.label==='340-345');
+ const initial=c.route(from.id,to.id),id=initial.connections[0].id,closures=[{linkId:id}];
+ assert.ok(id);assert.equal(c.links.filter(link=>link.id===id).length,2);
+ const forward=c.route(from.id,to.id,{closures}),backward=c.route(to.id,from.id,{closures});
+ assert.ok(forward);assert.ok(backward);
+ for(const route of [forward,backward])assert.ok(route.connections.every(link=>link.id!==id));
+ assert.equal(c.route(from.id,to.id).connections[0].id,id);
+});
+
+test('closure periods include the start and exclude the end',()=>{
+ const c=createCampusNavigator(geometry,spaces),from=c.floors.get(2).spaces.find(s=>s.label==='201'),to=c.floors.get(3).spaces.find(s=>s.label==='340-345');
+ const initial=c.route(from.id,to.id),id=initial.connections[0].id;
+ const closures=[{linkId:id,startsAt:'2026-01-01T10:00:00Z',endsAt:'2026-01-01T11:00:00Z'}];
+ for(const [at,closed] of [['2026-01-01T09:59:59Z',false],['2026-01-01T10:00:00Z',true],['2026-01-01T10:59:59Z',true],['2026-01-01T11:00:00Z',false]]){
+  const route=c.route(from.id,to.id,{closures,at});assert.ok(route);assert.equal(route.connections.some(link=>link.id===id),!closed,at);
+ }
+});
+
+test('closing every transition between floors produces no route and invalid intervals fail visibly',()=>{
+ const c=createCampusNavigator(geometry,spaces),from=c.floors.get(2).spaces.find(s=>s.label==='201'),to=c.floors.get(3).spaces.find(s=>s.label==='340-345');
+ const closures=c.links.filter(link=>link.from.startsWith('stairs-2-')&&link.to.startsWith('stairs-3-')).map(link=>({linkId:link.id}));
+ assert.ok(closures.length);assert.equal(c.route(from.id,to.id,{closures}),null);
+ assert.throws(()=>c.route(from.id,to.id,{closures:[{linkId:closures[0].linkId,startsAt:'invalid'}]}),/invalid closure interval/);
+ assert.throws(()=>c.route(from.id,to.id,{closures:[{linkId:closures[0].linkId,startsAt:'2026-01-02T00:00:00Z',endsAt:'2026-01-01T00:00:00Z'}]}),/invalid closure interval/);
+ assert.throws(()=>c.route(from.id,to.id,{closures,at:'invalid'}),/invalid route time/);
+ assert.throws(()=>c.route(from.id,to.id,{closures:[{linkId:'missing'}]}),/unknown closure linkId/);
+});
+
+const survey={source:'survey:accessibility-2026',checkedAt:'2026-01-01T10:00:00Z'};
+function verifiedFixture(){
+ const base=createCampusNavigator(geometry,spaces),a=base.floors.get(1).spaces.find(s=>s.point),b=base.floors.get(1).spaces.find(s=>s.point&&s.id!==a.id),c=base.floors.get(2).spaces.find(s=>s.point);
+ const nodes=[a,b,c].map(s=>({id:s.id,floor:s.floor,point:[...s.point],verification:{...survey}}));
+ const edges=[{id:'surveyed-hall',from:a.id,to:b.id,kind:'passage',points:[[...a.point],[...b.point]],bidirectional:true,verification:{...survey}},
+  {id:'surveyed-lift',from:b.id,to:c.id,kind:'lift',bidirectional:true,verification:{...survey},operation:{...survey,status:'operational'}}];
+ return {a,b,c,graph:{nodes,edges,complete:{...survey,value:true}}};
+}
+test('step-free mode fails closed on the actual campus and distinguishes missing entries',()=>{
+ const c=createCampusNavigator(geometry,spaces),a=c.floors.get(1).spaces.find(s=>s.point),b=c.floors.get(2).spaces.find(s=>s.point);
+ assert.ok(c.route(a.id,b.id));
+ for(const target of [a.id,b.id]){const result=c.routeStepFree(a.id,target);assert.equal(result.route,null);assert.equal(result.reason,'unverified');assert.ok(result.unverified.some(x=>x.kind==='entry'&&x.id===a.id));assert.ok(result.unverified.some(x=>x.kind==='entry'&&x.id===target));assert.ok(result.unverified.some(x=>x.kind==='graph')); }
+ assert.equal(c.routeStepFree(a.id,'missing').reason,'missing-entry');
+});
+test('only independently recorded edges with verified endpoints and working lift form a step-free path',()=>{
+ const {a,c,graph}=verifiedFixture(),nav=createCampusNavigator(geometry,spaces,{stepFreeGraph:graph});
+ const result=nav.routeStepFree(a.id,c.id);assert.equal(result.reason,null);assert.deepEqual(result.route.floors,[1,2]);assert.equal(result.route.connections[0].kind,'lift');assert.deepEqual(result.route.segments[0].points,graph.edges[0].points);
+ const reversed=nav.routeStepFree(c.id,a.id);assert.equal(reversed.reason,null);assert.deepEqual(reversed.route.segments[0].points,[...graph.edges[0].points].reverse());
+ const closed=nav.routeStepFree(a.id,c.id,{closures:[{linkId:'surveyed-lift'}]});assert.equal(closed.reason,'disconnected');
+ assert.equal(nav.routeStepFree(a.id,c.id).reason,null);
+ const original=structuredClone(graph);delete graph.edges[0].verification;
+ assert.equal(nav.routeStepFree(a.id,c.id).reason,'unverified');
+ Object.assign(graph,structuredClone(original));delete graph.edges[1].operation;
+ assert.ok(nav.routeStepFree(a.id,c.id).unverified.some(x=>x.kind==='lift'));
+ Object.assign(graph,structuredClone(original));graph.edges[1].operation.status='unavailable';
+ assert.equal(nav.routeStepFree(a.id,c.id).reason,'disconnected');
+});
+test('incomplete, malformed, and staircase data never become step-free routes',()=>{
+ const {a,b,c,graph}=verifiedFixture(),original=structuredClone(graph),nav=createCampusNavigator(geometry,spaces,{stepFreeGraph:graph});
+ for(const alter of [g=>delete g.nodes[0].verification,g=>g.edges[0].points.pop(),g=>g.edges[1].kind='stairs',g=>g.nodes.push({...g.nodes[0]}),g=>delete g.complete]){
+  Object.assign(graph,structuredClone(original));alter(graph);
+  if(!graph.complete)graph.edges=[];
+  const result=nav.routeStepFree(a.id,c.id);
+  assert.equal(result.route,null);assert.equal(result.reason,'unverified');assert.ok(result.unverified.length);
+ }
+ Object.assign(graph,structuredClone(original));graph.edges=[];
+ assert.equal(nav.routeStepFree(a.id,b.id).reason,'disconnected');
+ Object.assign(graph,structuredClone(original));graph.edges[0].bidirectional=false;
+ assert.equal(nav.routeStepFree(b.id,a.id).reason,'disconnected');
+});

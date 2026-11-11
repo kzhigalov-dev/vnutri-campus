@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Редактор закрытий — внутри.</title>
+ <link rel="stylesheet" href="./map-editor.css">
+ <script type="module" src="./js/map-editor.js"></script>
+<link rel="stylesheet" href="./campus-interface.css?v=20261112-interface2"></head>
+<body class="campus-page">
+<header class="top"><a class="brand" href="./index.html">внутри<span>.</span></a><a href="./index.html">← К карте</a></header>
+<main>
+ <div class="intro"><p class="eyebrow">ДЕМО · КАРТА КОРПУСА</p><h1>Закрытия переходов</h1><p>Создайте локальную версию карты и проверьте, как изменится маршрут. Это учебная модель: данные не проверены на месте.</p></div>
+ <aside class="notice"><strong>Только в этом браузере</strong><p>Версии хранятся на этом устройстве. Они не публикуются и не меняют публичную карту. При очистке данных браузера они исчезнут.</p></aside>
+ <p id="status" class="status" role="status" aria-live="polite">Загружаем граф переходов…</p>
+ <div id="editor" hidden>
+  <section class="panel"><div class="section-head"><div><p class="eyebrow">01 / ЧЕРНОВИК</p><h2>Добавить закрытие</h2></div><span class="badge">Оба направления</span></div>
+   <p>Доступны межэтажные лестничные переходы из текущего графа. Закрытие действует в обе стороны.</p>
+   <form id="closure-form">
+    <label class="wide">Переход<select id="link" required></select></label>
+    <label>Начало <span>по Москве, необязательно</span><input id="starts" type="datetime-local"></label>
+    <label>Окончание <span>по Москве, необязательно</span><input id="ends" type="datetime-local"></label>
+    <label class="wide">Причина <span>необязательно</span><input id="reason" maxlength="500" placeholder="Например, ремонт лестницы"></label>
+    <p class="hint wide">Укажите московское время. Переход закрывается с момента начала и открывается в момент окончания. Пустое поле оставляет соответствующую границу открытой.</p>
+    <button class="primary" type="submit">Добавить в черновик</button>
+   </form>
+  </section>
+  <section class="panel"><div class="section-head"><div><p class="eyebrow">02 / ИЗМЕНЕНИЯ</p><h2>Черновик</h2></div><span id="count" class="badge">0 закрытий</span></div><div id="closures"></div><div class="actions"><button id="save" class="primary" type="button">Сохранить локальную версию</button><a class="button" href="./index.html?map=preview">Открыть демо-маршрут ↗</a></div><p class="hint">Демо использует последнюю сохранённую версию, а не несохранённый черновик.</p></section>
+  <section class="panel"><div class="section-head"><div><p class="eyebrow">03 / ИСТОРИЯ</p><h2>Локальные версии</h2></div><button id="export" class="button" type="button">Экспорт JSON</button></div><p>Откат создаёт новую локальную версию и сохраняет предыдущие снимки.</p><div id="versions"></div></section>
+ </div>
+</main>
+</body></html>
