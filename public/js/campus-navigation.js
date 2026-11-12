@@ -51,14 +51,20 @@ export function createCampusNavigator(geometry,spaceData,{stepFreeGraph=null}={}
   }
   return result;
  }
- function route(fromId,toId,{closures=[],at=Date.now()}={}){const closed=closedLinks(closures,at),from=entries.get(fromId),to=entries.get(toId);if(!from?.point||!to?.point)return null;if(from.id===to.id)return {from,to,segments:[{floor:from.floor,points:[[...from.point]]}],connections:[],floors:[from.floor]};const direct=local(from,to);if(direct)return {from,to,segments:[{floor:from.floor,points:direct}],connections:[],floors:[from.floor]};
+ function route(fromId,toId,{closures=[],at=Date.now()}={}){const closed=closedLinks(closures,at),from=entries.get(fromId),to=entries.get(toId);if(!from?.point||!to?.point)return null;if(from.id===to.id)return {from,to,segments:[{floor:from.floor,visit:0,points:[[...from.point]]}],connections:[],floors:[from.floor]};const direct=local(from,to);if(direct)return {from,to,segments:[{floor:from.floor,visit:0,points:direct}],connections:[],floors:[from.floor]};
   const graph=new Map(nodes);graph.set('__from',from);graph.set('__to',to);const dist=new Map([['__from',0]]),prev=new Map(),visited=new Set();
   while(true){let current=null,best=Infinity;for(const [id,d] of dist)if(!visited.has(id)&&d<best){best=d;current=id;}if(!current)break;if(current==='__to')break;visited.add(current);const a=graph.get(current),edges=[];
    for(const [id,b] of graph){if(id===current||id==='__from'||a.floor!==b.floor)continue;const path=local(a,b);if(path)edges.push({to:id,cost:length(path),path,floor:a.floor});}
    for(const edge of vertical.get(current)||[]){if(closed.has(edge.id))continue;if(from.departureStairId&&a.floor===from.floor&&current!==from.departureStairId)continue;edges.push({...edge,connection:{id:edge.id,fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index,stairNumber:a.number??graph.get(edge.to).number,registration:edge.registration,illustrative:edge.illustrative}});}
    for(const edge of edges){const next=best+edge.cost;if(next<(dist.get(edge.to)??Infinity)){dist.set(edge.to,next);prev.set(edge.to,{id:current,edge});}}
   }
-  if(!prev.has('__to'))return null;const edges=[];for(let id='__to';id!=='__from';){const previous=prev.get(id);if(!previous)return null;edges.push(previous.edge);id=previous.id;}edges.reverse();const segments=edges.filter(e=>e.path).map(e=>({floor:e.floor,points:e.path})),connections=edges.filter(e=>e.connection).map(e=>e.connection),order=[from.floor];for(const connection of connections)if(order.at(-1)!==connection.toFloor)order.push(connection.toFloor);if(order.at(-1)!==to.floor)order.push(to.floor);return {from,to,segments,connections,floors:order};
+  if(!prev.has('__to'))return null;const edges=[];for(let id='__to';id!=='__from';){const previous=prev.get(id);if(!previous)return null;edges.push(previous.edge);id=previous.id;}edges.reverse();
+  const segments=[],connections=[],order=[from.floor];
+  for(const edge of edges){
+   if(edge.path)segments.push({floor:edge.floor,visit:connections.length,points:edge.path});
+   else if(edge.connection){connections.push(edge.connection);order.push(edge.connection.toFloor);}
+  }
+  return {from,to,segments,connections,floors:order};
  }
  // Step-free data is a separate, explicitly surveyed graph; geometric proximity
  // and ordinary walk-map routes are never evidence of an accessible passage.
@@ -112,10 +118,10 @@ export function createCampusNavigator(geometry,spaceData,{stepFreeGraph=null}={}
     const steps=[];for(let id=toId;id!==fromId;){const item=prev.get(id);steps.push(item);id=item.id;}steps.reverse();
     const segments=[],connections=[],order=[from.floor];
     for(const item of steps){const e=item.edge,a=surveyed.get(item.id),b=surveyed.get(item.to);
-     if(e.kind==='passage')segments.push({floor:a.floor,points:(item.reverse?[...e.points].reverse():e.points).map(p=>[...p])});
+     if(e.kind==='passage')segments.push({floor:a.floor,visit:connections.length,points:(item.reverse?[...e.points].reverse():e.points).map(p=>[...p])});
      else{connections.push({id:e.id,kind:'lift',fromFloor:a.floor,toFloor:b.floor,from:[...a.point],to:[...b.point]});if(order.at(-1)!==b.floor)order.push(b.floor);}
     }
-    if(!segments.length&&fromId===toId)segments.push({floor:from.floor,points:[[...surveyed.get(fromId).point]]});
+    if(!segments.length&&fromId===toId)segments.push({floor:from.floor,visit:0,points:[[...surveyed.get(fromId).point]]});
     return {route:{from,to,segments,connections,floors:order},reason:null,unverified:[]};
    }
   }

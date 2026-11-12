@@ -36,6 +36,12 @@ export function createServiceLink(base, serviceId) {
   return url;
 }
 
+export function createSpaceLink(base, spaceId) {
+  const url = new URL('./index.html', base);
+  url.hash = 'space=' + encodeURIComponent(spaceId);
+  return url;
+}
+
 export function createStartLink(base, start) {
   const url = new URL('./index.html', base);
   url.searchParams.set('start', start);

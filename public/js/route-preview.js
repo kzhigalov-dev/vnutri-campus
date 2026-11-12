@@ -22,11 +22,14 @@ export function createRoutePreview(route,world,stairPath=()=>null){
    append({floor:arrives?toFloor:fromFloor,position},{toFloor,arrives});
   });
  }
- // Segments and connections are ordered independently by the routing engine.
- // Match each segment's floor to the next connection; never interpolate over rooms.
+ // A visit counts the transitions preceding a segment. Two visits to the same
+ // floor can have no corridor segment on the floor between them.
  let index=0;
  for(const segment of route.segments){
-  while(index<route.connections.length&&(last?.floor??route.connections[index].fromFloor)!==segment.floor)appendConnection(route.connections[index++]);
+  while(index<route.connections.length
+   &&(segment.visit===undefined?(last?.floor??route.connections[index].fromFloor)!==segment.floor:index<segment.visit)){
+   appendConnection(route.connections[index++]);
+  }
   for(const p of segment.points)append(point(segment.floor,p));
  }
  while(index<route.connections.length)appendConnection(route.connections[index++]);
@@ -49,16 +52,15 @@ export function routeFloorInstruction(route,index){
  if(connection?.kind==='lift')return `К лифту · перейти на ${connection.toFloor}-й этаж`;
  const uniqueFloor=route.floors.indexOf(floor)===route.floors.lastIndexOf(floor);
  const turns=[];let ambiguous=false;
- if(uniqueFloor){
-  for(const segment of route.segments.filter(s=>s.floor===floor)){
-   const points=segment.points.filter((p,i,a)=>i===0||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>1e-7);
-   for(let i=1;i<points.length-1;i++){
-    const a=[points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]],b=[points[i+1][0]-points[i][0],points[i+1][1]-points[i][1]];
-    const la=Math.hypot(...a),lb=Math.hypot(...b),cross=a[0]*b[1]-a[1]*b[0],dot=a[0]*b[0]+a[1]*b[1];
-    // Short grid corrections and near reversals do not make reliable directions.
-    const angle=Math.abs(Math.atan2(cross,dot))*180/Math.PI;
-    if(angle>=45){if(la<1||lb<1||angle>135)ambiguous=true;else turns.push(cross>0?'направо':'налево');}
-   }
+ const segments=route.segments.filter(segment=>segment.floor===floor&&(segment.visit===undefined?uniqueFloor:segment.visit===index));
+ for(const segment of segments){
+  const points=segment.points.filter((p,i,a)=>i===0||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>1e-7);
+  for(let i=1;i<points.length-1;i++){
+   const a=[points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]],b=[points[i+1][0]-points[i][0],points[i+1][1]-points[i][1]];
+   const la=Math.hypot(...a),lb=Math.hypot(...b),cross=a[0]*b[1]-a[1]*b[0],dot=a[0]*b[0]+a[1]*b[1];
+   // Short grid corrections and near reversals do not make reliable directions.
+   const angle=Math.abs(Math.atan2(cross,dot))*180/Math.PI;
+   if(angle>=45){if(la<1||lb<1||angle>135)ambiguous=true;else turns.push(cross>0?'направо':'налево');}
   }
  }
  const direction=!ambiguous&&turns.length?`По линии маршрута: ${turns.map((turn,i)=>`${i?'затем поверните':'поверните'} ${turn}`).join(', ')}. `:'';

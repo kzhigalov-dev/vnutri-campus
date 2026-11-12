@@ -1,3 +1,6 @@
+import {createRouteLink} from './navigation-link.js';
+import {roomPlacements} from './room-placements.js';
+
 export const campusBuildings=[
  {id:'voznesensky',address:'Вознесенский проспект, 46',code:'В',source:'https://sutd.ru/contacts/?address=109',plan:'./index.html?start=start-1'},
  {id:'morskaya',address:'Большая Морская улица, 18',code:'Без буквы',source:'https://sutd.ru/contacts/?address=23'},
@@ -9,6 +12,26 @@ export const campusBuildings=[
 ];
 
 export const buildingById=id=>campusBuildings.find(building=>building.id===id);
+
+export function mappedBuildingRoom(buildingId, roomNumber) {
+ if(buildingId!=='voznesensky')return null;
+ return roomPlacements.find(room=>room.number===roomNumber&&room.confidence==='exact')??null;
+}
+
+export function buildingDirectionsLink(base, buildingId, roomNumber) {
+ const url=new URL('./buildings.html',base);
+ url.searchParams.set('to',buildingId);
+ if(mappedBuildingRoom(buildingId,roomNumber))url.searchParams.set('room',roomNumber);
+ return url;
+}
+
+export function indoorDirections(base, buildingId, roomNumber) {
+ const building=buildingById(buildingId);
+ if(!building?.plan)return null;
+ const room=mappedBuildingRoom(buildingId,roomNumber);
+ const url=room?createRouteLink(base,'start-1',room.spaceId):new URL(building.plan,base);
+ return {url,room};
+}
 
 export function cityDirections(fromId,toId){
  const from=buildingById(fromId),to=buildingById(toId);

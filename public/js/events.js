@@ -1,4 +1,4 @@
-import {demoVisits, programLink, routeLink, selectedVisits, upcomingOfficialEvents} from './campus-days-model.js';
+import {demoVisits, programLink, routeLink, selectedVisits, upcomingOfficialEvents, visitItinerary} from './campus-days-model.js?v=20261112-polish';
 
 const $ = id => document.getElementById(id);
 const official = upcomingOfficialEvents();
@@ -11,10 +11,30 @@ if (params.has('program') && params.get('program') !== 'demo-open-day') {
   document.querySelector('.share-box').hidden = true;
 } else {
   const chosen = new Set(selectedVisits(location.search));
-  $('visit-list').innerHTML = demoVisits.map(visit => `<article class="card visit"><div class="card-time">${visit.time}<span>пример</span></div><div class="card-body"><div class="card-top"><span class="pill">Остановка</span><label class="visit-select"><input type="checkbox" value="${visit.id}" ${chosen.has(visit.id) ? 'checked' : ''}> В программе</label></div><h3>${visit.title}</h3><p>${visit.description}<br>Аудитория ${visit.room} · 4-й этаж</p><a class="text-link" href="${routeLink(location.href, visit.destination)}">Маршрут от входа →</a></div></article>`).join('');
-  const update = () => {
+  $('visit-list').innerHTML = demoVisits.map(visit => `<article class="card visit" data-visit="${visit.id}"><div class="card-time">${visit.time}<span>пример</span></div><div class="card-body"><div class="card-top"><span class="pill" data-visit-position></span><label class="visit-select"><input type="checkbox" value="${visit.id}" ${chosen.has(visit.id) ? 'checked' : ''}> В программе</label></div><h3>${visit.title}</h3><p>${visit.description}<br>Аудитория ${visit.room} · 4-й этаж</p><div data-visit-route></div></div></article>`).join('');
+  const cards = [...$('visit-list').querySelectorAll('[data-visit]')];
+  const update = event => {
     const ids = [...$('visit-list').querySelectorAll('input:checked')].map(input => input.value);
-    $('share-link').value = programLink(location.href, ids).href;
+    const stops = new Map(visitItinerary(ids).map((stop, index) => [stop.visit.id, {...stop, number:index+1}]));
+    for (const card of cards) {
+      const stop = stops.get(card.dataset.visit);
+      card.querySelector('[data-visit-position]').textContent = stop ? `${stop.number}-я остановка` : 'Вне программы';
+      const leg = card.querySelector('[data-visit-route]');
+      leg.replaceChildren();
+      if (!stop) continue;
+      if (!stop.route) {
+        leg.textContent = 'Для этого участка нет подтверждённой точки на плане.';
+        continue;
+      }
+      const link = document.createElement('a');
+      link.className = 'text-link';
+      link.href = routeLink(location.href, stop.route.destination, stop.route.origin);
+      link.textContent = stop.previous ? `От аудитории ${stop.previous.room} →` : 'От главного входа →';
+      leg.append(link);
+    }
+    const url = programLink(location.href, ids);
+    $('share-link').value = url.href;
+    if (event?.type === 'change') history.replaceState(null, '', url);
     $('copy-status').textContent = ids.length ? `Остановок в программе: ${ids.length}` : 'Остановки не выбраны.';
   };
   $('visit-list').addEventListener('change', update);

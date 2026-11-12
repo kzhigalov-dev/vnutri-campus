@@ -1,8 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRoutePreview,sampleRoutePreview} from '../public/js/route-preview.js';
+import {createRoutePreview,routeFloorInstruction,sampleRoutePreview} from '../public/js/route-preview.js';
 import {buildRouteStair} from '../public/js/route-stair.js';
 const world=(floor,p,y)=>[p[0],(floor-1)*10+y,p[1]];
+test('a return visit follows both transitions even without an intervening corridor segment',()=>{
+ const route={
+  floors:[2,3,2],
+  segments:[{floor:2,visit:0,points:[[0,0],[3,0]]},{floor:2,visit:2,points:[[6,0],[6,2],[8,2]]}],
+  connections:[{fromFloor:2,toFloor:3,from:[3,0],to:[4,0]},{fromFloor:3,toFloor:2,from:[4,0],to:[6,0]}],
+ };
+ const preview=createRoutePreview(route,world);
+ assert.deepEqual(preview.legs.map(leg=>[leg.step,leg.connection]),[[0,false],[0,true],[1,true],[2,false],[2,false]]);
+ assert.deepEqual(sampleRoutePreview(preview,1).position,world(2,[8,2],.27));
+ assert.doesNotMatch(routeFloorInstruction(route,0),/поверните/);
+ assert.match(routeFloorInstruction(route,2),/поверните налево/);
+});
 for(const [from,to] of [[1,4],[5,2]])test(`preview follows every waypoint and stair on ${from}→${to}`,()=>{
  const dir=Math.sign(to-from),floors=Array.from({length:Math.abs(to-from)+1},(_,i)=>from+i*dir);
  const route={segments:floors.map(floor=>({floor,points:[[0,0],[2,0],[2,2]]})),connections:floors.slice(0,-1).map((floor,i)=>({fromFloor:floor,toFloor:floors[i+1],from:[2,2],to:[0,0]}))};

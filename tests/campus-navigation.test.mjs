@@ -14,6 +14,8 @@ test('second-floor signed remote wing routes through floor3 instead of inventing
  assert.ok(route.connections.every(s=>s.stairNumber));
  for(const label of ['277','278','258-264']){const target=rows.find(s=>s.label===label);assert.ok(target);const signedRoute=c.route(from.id,target.id);assert.deepEqual(signedRoute.floors,[2,3,2]);assert.equal(signedRoute.connections.at(-1).stairNumber,label==='258-264'?2:1);}
  assert.deepEqual(route.connections.map(s=>[s.fromFloor,s.toFloor]),[[2,3],[3,2]]);
+ assert.ok(route.segments.every(segment=>route.floors[segment.visit]===segment.floor));
+ assert.deepEqual([...new Set(route.segments.map(segment=>segment.visit))],[0,1,2]);
 });
 
 test('panel stair numbers stay consistent between adjacent floors',()=>{

@@ -1,16 +1,16 @@
 import {seatLayout} from './maquette-layout.js?v=20261030-11';
 import {applyRoomPlacements,roomEvidence,roomPlacements} from './room-placements.js';
-import {createCampusNavigator} from './campus-navigation.js?v=20261112-pilot';
+import {createCampusNavigator} from './campus-navigation.js?v=20261112-visit';
 import {loadMapClosures} from './map-preview.js';
 import {searchRoom} from './room-search.js';
 import {searchServices} from './service-search.js';
 import {parseWorkSearch,nextWorkHour} from './work-search.js';
 import {createNavigatorPlan} from './navigator-plan.js';
 import {accessSources,floorSource,secondFloorDetour,fourthFloorSign} from './campus-evidence.js';
-import {createRouteLink,createServiceLink,createStartLink,readNavigationLink,writeRoutePreferences} from './navigation-link.js';
-import {routeFloorInstruction} from './route-preview.js?v=20261111-route1';
+import {createRouteLink,createServiceLink,createSpaceLink,createStartLink,readNavigationLink,writeRoutePreferences} from './navigation-link.js?v=20261112-guide';
+import {routeFloorInstruction} from './route-preview.js?v=20261112-visit';
 import {pilotRooms,pilotEquipment,pilotRoomById,pilotRoomBySpace,pilotStatus,filterPilotRooms,pilotDisplayNumber} from './pilot-spaces.js';
-import {todayMoscow,addDays,loadBookings,saveBookings,createBooking,cancelBooking,validateRequest,STORAGE_KEY} from './model.js';
+import {todayMoscow,addDays,loadBookings,saveBookings,createBooking,updateBooking,cancelBooking,validateRequest,STORAGE_KEY} from './model.js?v=20261112-booking-edit';
 import {slotLabel} from './data.js';
 import {escapeHTML as e} from './email-template.js';
 import {initContactForm,sendBookingNotification} from './contact-form.js?v=20261106-ui2';
@@ -21,9 +21,10 @@ const routeParams=new URLSearchParams(location.search),previewRequested=routePar
 $('nav-route-mode').value=routeParams.get('access')==='step-free'?'step-free':'standard';
 let mapRouting,routeFeedback='';
 function routePreferences(){return {stepFree:$('nav-route-mode').value==='step-free',mapPreview:previewRequested};}
-let graphicsAvailable=false,routeStairFocus=null;
+let graphicsAvailable=false,routeStairFocus=null,stairReturnStep=-1,stairTrigger=null;
 let services=null,servicesFailed=false;
 let campus,scene,directory,selected=null,directoryEntry=null,origin=defaultOrigin,mode='all',route=null,routeRevision=0,routeStep=-1,chosen=new Set(),busy=false,bookingError='',success=null,toastTimer,bookingOpen=false,returnFocus=null,viewLevel=0;
+let editingBooking=null,seekingPreview=false;
 const storage={getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)};
 let restored=loadBookings(storage),bookings=restored.bookings,storageError=restored.error,visible=new Set(),pendingConfirm;
 const today=todayMoscow();$('nav-date').value=today;$('nav-date').min=today;$('nav-date').max=addDays(today,14);$('nav-start-time').innerHTML=Array.from({length:12},(_,i)=>`<option value="${i+9}"${i+9===13?' selected':''}>${slotLabel(i+9)}</option>`).join('');
@@ -31,6 +32,7 @@ $('nav-team-size').append(...Array.from({length:Math.max(...pilotRooms.map(room=
 $('nav-equipment').append(new Option('Любое',''),...pilotEquipment.map(item=>new Option(item,item)));
 function toast(message){clearTimeout(toastTimer);$('nav-toast').textContent=message;$('nav-toast').hidden=false;toastTimer=setTimeout(()=>$('nav-toast').hidden=true,5000);return toastTimer; }
 function slot(){return {date:$('nav-date').value,start:$('nav-start-time').value,hours:$('nav-hours').value}}
+function availabilityBookings(){return editingBooking?bookings.filter(booking=>booking.id!==editingBooking.id):bookings;}
 function slotErrors(){const errors=validateRequest({roomId:pilotRooms[0].id,seatIds:[8],...slot()},bookings,today);return Object.entries(errors).filter(([key])=>key!=='seats'&&key!=='room').map(([,message])=>message)}
 function categoryName(category){return {computer:'С компьютером',quiet:'Тихая работа',team:'Для команды'}[category]||'Помещение модели'}
 function filter(){
@@ -45,7 +47,12 @@ function filter(){
 function current(){return campus?.entries.get(selected)||null}
 function pilot(){return pilotRoomBySpace(selected)}
 const mobile=matchMedia('(max-width:700px)');
-function syncSidebar(){const open=app.classList.contains('is-list-open');$('nav-sidebar').inert=!open;$('nav-list-toggle').setAttribute('aria-expanded',String(open));}
+function syncSidebar(){
+ const open=app.classList.contains('is-list-open');
+ $('nav-sidebar').inert=!open;
+ $('nav-list-toggle').setAttribute('aria-expanded',String(open));
+ $('nav-query').setAttribute('aria-controls','nav-sidebar');
+}
 function openList(){if(!app.classList.contains('is-list-open'))returnFocus=document.activeElement;app.classList.add('is-list-open');syncSidebar()}
 function closeList(){app.classList.remove('is-list-open');syncSidebar()}
 let restoringSearchFocus=false;
@@ -84,14 +91,14 @@ function setLevel(number,animate=true,stairIndex=null){
   source.removeAttribute('target');
  }
  const overviewButton=document.querySelector('[data-level="0"]');
- const overviewLabel=route?'Весь маршрут':'Показать здание целиком';
+ const overviewLabel=graphicsAvailable?(route?'Весь маршрут':'Показать здание целиком'):'Показать план стартового этажа';
  overviewButton.setAttribute('aria-label',overviewLabel);
  overviewButton.title=overviewLabel;
- overviewButton.querySelector('use').setAttribute('href',route?'#nav-i-route':'#nav-i-building');
- overviewButton.querySelector('span').textContent=route?'Маршрут':'Здание';
+ overviewButton.querySelector('use').setAttribute('href',graphicsAvailable?(route?'#nav-i-route':'#nav-i-building'):'#nav-i-plan');
+ overviewButton.querySelector('span').textContent=graphicsAvailable?(route?'Маршрут':'Здание'):'Старт';
  document.querySelectorAll('[data-level]').forEach(button=>button.setAttribute('aria-pressed',String(stairIndex===null&&Number(button.dataset.level)===number)));
  if(route){
-  setRouteStep(stairIndex??route.floors.indexOf(number));
+  setRouteStep(stairIndex??(route.floors[routeStep]===number?routeStep:route.floors.indexOf(number)));
   updateStairPanel();
  }
 }
@@ -105,10 +112,6 @@ function switchToPlan(){
   scene=createNavigatorPlan({container:$('campus-map'),campus,onSelect:select});
   app.classList.add('has-plan-fallback');
   $('campus-map').setAttribute('aria-label','Плоский план корпуса. Кабинеты также доступны в списке.');
-  const overview=document.querySelector('[data-level="0"]');
-  overview.setAttribute('aria-label','Показать план стартового этажа');
-  overview.title='План стартового этажа';
-  overview.querySelector('span').textContent='Старт';
   scene.setVisible(visible);
   scene.select(selected);
   scene.setRoute(route);
@@ -123,11 +126,37 @@ function switchToPlan(){
  renderRoute();
 }
 function setRouteStep(index){
+ const previous=routeStep;
  routeStep=index;
- $('nav-route').querySelectorAll('[data-route-step]').forEach(button=>button.setAttribute('aria-current',Number(button.dataset.routeStep)===index?'step':'false'));
+ const panel=$('nav-route');
+ const guide=panel.querySelector('.nav-route-guide');
+ const instruction=guide?.querySelector('[data-guide-instruction]');
+ if(previous===index&&instruction?.textContent)return;
+ panel.querySelectorAll('[data-route-step]').forEach(button=>button.setAttribute('aria-current',Number(button.dataset.routeStep)===index?'step':'false'));
+ if(!guide||!route)return;
+ const displayed=Math.max(0,index);
+ const count=route.floors.length;
+ const position=guide.querySelector('[data-guide-position]');
+ const label=`${index<0?'Первый шаг':`Шаг ${index+1} из ${count}`} · ${route.floors[displayed]}-й этаж`;
+ if(position.textContent!==label)position.textContent=label;
+ instruction.textContent=routeFloorInstruction(route,displayed);
+ guide.querySelector('[data-route-prev]').disabled=index<=0;
+ const next=guide.querySelector('[data-route-next]');
+ next.disabled=index>=count-1;
+ next.textContent=index<0?'Показать первый шаг':'Следующий шаг';
+ const stairs=guide.querySelector('[data-guide-stair]');
+ const connection=route.connections[displayed];
+ stairs.hidden=!graphicsAvailable||!connection||connection.kind==='lift';
+ stairs.dataset.guideStair=String(displayed);
+ if(!stairs.hidden)stairs.textContent=`Лестница целиком · ${connection.fromFloor} → ${connection.toFloor}`;
+}
+function showRouteStep(index){
+ if(!route||index<0||index>=route.floors.length)return;
+ if(scene)setLevel(route.floors[index]);
+ setRouteStep(index);
 }
 function showMapFloor(number){
- if(!route){clearSelection();resetFilters();closeList();}
+ if(!route)clearSelection();
  setLevel(number);
 }
 function clearRoute(){
@@ -135,12 +164,35 @@ function clearRoute(){
  route=null;
  routeFeedback='';
  routeStairFocus=null;
+ stairReturnStep=-1;
+ stairTrigger=null;
  scene?.setRoute(null);
  $('nav-route').hidden=true;
  delete $('nav-route').dataset.focusedStair;
  routeStep=-1;
 }
-function clearSelection(message){if($('nav-detail').contains($('nav-time')))$('nav-slot-home').append($('nav-time'));bookingOpen=false;scene?.setSeatSelection?.(selected,[]);selected=null;directoryEntry=null;chosen.clear();success=null;bookingError='';clearRoute();scene?.select(null,{focus:false});$('nav-detail').hidden=true;app.classList.remove('has-context');document.querySelectorAll('[data-select][aria-pressed=true]').forEach(b=>b.setAttribute('aria-pressed','false'));if(message)toast(message)}
+function clearSelection(message){
+ if($('nav-detail').contains($('nav-time')))$('nav-slot-home').append($('nav-time'));
+ bookingOpen=false;
+ editingBooking=null;
+ scene?.setSeatSelection?.(selected,[]);
+ selected=null;
+ directoryEntry=null;
+ chosen.clear();
+ success=null;
+ bookingError='';
+ clearRoute();
+ scene?.select(null,{focus:false});
+ $('nav-detail').hidden=true;
+ app.classList.remove('has-context');
+ document.querySelectorAll('[data-select][aria-pressed=true]').forEach(b=>b.setAttribute('aria-pressed','false'));
+ const url=new URL(location.href);
+ url.searchParams.delete('to');
+ url.searchParams.delete('room');
+ if(url.hash.startsWith('#space='))url.hash='';
+ if(url.href!==location.href)history.replaceState(null,'',url);
+ if(message)toast(message);
+}
 function closePassport(){clearSelection();setLevel(viewLevel);document.querySelector('.nav-levels [aria-pressed=true]')?.focus();}
 function returnToRoom(){
  clearRoute();
@@ -195,7 +247,8 @@ function renderResults(){
  const missingEquipment=filters.equipment.find(item=>!pilotEquipment.includes(item));
  const noUpcomingSlot=Boolean(filters.request?.nearestHour&&!nextWorkHour());
  const workNotice=missingEquipment?'В каталоге нет сведений о розетках.':noUpcomingSlot?'В ближайший час учебных слотов по Москве нет.':'';
- const pilots=filterPilotRooms({...filters,query:''},bookings,slot()),pilotSet=new Set(pilots.map(r=>r.spaceId));
+ const relevantBookings=availabilityBookings();
+ const pilots=filterPilotRooms({...filters,query:''},relevantBookings,slot()),pilotSet=new Set(pilots.map(r=>r.spaceId));
  const entries=campus?[...campus.entries.values()].filter(s=>s.kind==='space'):pilotRooms.map(r=>({id:r.spaceId,label:r.number,floor:4,kind:'space'}));
  const result=(mode==='services'?[]:entries).flatMap(space=>{
   const room=pilotRoomBySpace(space.id);
@@ -210,7 +263,7 @@ function renderResults(){
   ||Number(Boolean(b.space.directoryRoom))-Number(Boolean(a.space.directoryRoom))
   ||a.space.floor-b.space.floor||a.space.label.localeCompare(b.space.label,'ru',{numeric:true})).map(({space})=>space);
  visible=new Set(result.map(s=>s.id));if(selected&&!visible.has(selected))clearSelection('Выбор снят: помещение скрыто фильтром.');
- const availability=new Map(pilotRooms.map(r=>[r.spaceId,invalid?{free:null,text:'Уточни время'}:pilotStatus(r,bookings,slot())]));scene?.setAvailability?.(availability);scene?.setVisible(visible);
+ const availability=new Map(pilotRooms.map(r=>[r.spaceId,invalid?{free:null,text:'Уточни время'}:pilotStatus(r,relevantBookings,slot())]));scene?.setAvailability?.(availability);scene?.setVisible(visible);
  const timeErrors=slotErrors();if(timeErrors.length)$('nav-time').open=true;const time=slot();$('nav-slot-summary').textContent=timeErrors.length?'Уточните дату и время':`${time.date===today?'Сегодня':new Intl.DateTimeFormat('ru',{day:'numeric',month:'short'}).format(new Date(time.date+'T12:00:00Z'))}, ${slotLabel(Number(time.start))}–${slotLabel(Number(time.start)+Number(time.hours))}`;
  const serviceCount=renderServices(query,filters);
  $('nav-results').innerHTML=result.length?result.map(s=>{const r=pilotRoomBySpace(s.id),status=availability.get(s.id);return `<button type="button" class="nav-result ${status?.free===0?'is-busy':''}" data-select="${e(s.id)}" aria-pressed="${s.id===selected}"><span class="nav-result-code">${e(s.label)}</span><span class="nav-result-main"><strong>${e(s.displayName||r?.name||'Помещение модели')}</strong><small>${s.floor}-й этаж${s.directoryRoom&&!s.directoryRoom.documented_floor?' макета':''}${r?' · '+categoryName(r.category):''}</small>${r?`<small class="nav-status">${status.free===0?'×':'○'} ${e(status.text)} · Бесплатно</small>`:''}</span></button>`}).join(''):serviceCount?'':`<p class="nav-empty">${invalid&&requiresFree?'Уточните дату и время для проверки свободных мест.':mode==='work'?'Нет учебных мест, подходящих по этим условиям. Измените требования или время.':'Ничего не найдено. Измени запрос или сбрось фильтры.'}</p>`;
@@ -234,7 +287,7 @@ function renderResults(){
  for(const key of ['all','work','services','contact'])$('nav-mode-'+key).setAttribute('aria-pressed',String(mode===key));
  $('nav-sidebar-contact').hidden=!isContact;
  for(const id of ['nav-filter-row','nav-time','nav-results','nav-directory-results'])$(id).hidden=isContact||serviceOnly;
- $('nav-origin-tools').hidden=isContact||(serviceOnly&&!hasServiceRoute);
+ $('nav-origin-tools').hidden=isContact||(serviceOnly&&!hasServiceRoute&&!route);
  $('nav-work-filters').hidden=!filters.work;
  $('nav-work-notice').textContent=workNotice|| (filters.request
   ? [filters.minSeats>1?`Мест: от ${filters.minSeats}`:'',...new Set(filters.equipment),filters.request.nearestHour?$('nav-slot-summary').textContent:''].filter(Boolean).join(' · ')
@@ -249,18 +302,18 @@ function renderDetail(){
  const entry=current(),r=pilot();panel.classList.toggle('is-booking',bookingOpen&&!success);panel.classList.toggle('is-success',Boolean(success&&r?.id===success.roomId));app.classList.toggle('has-context',Boolean(entry||r||directoryEntry));
  if(directoryEntry){const source=directory.sources[directoryEntry.source_ids[0]];panel.hidden=false;panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(directoryEntry.number)}</h2><p class="nav-room-title">${e(directoryEntry.label)}</p><p>Номер из справочника. Современное положение на плане не подтверждено; маршрут и бронь этому номеру не назначены.</p><a class="nav-btn" href="${e(source.url)}" target="_blank" rel="noopener">Открыть источник</a><a class="nav-btn nav-btn-wide" href="./about.html">О точности макета</a>`;return;}
  if(!entry&&!r){panel.hidden=true;return}panel.hidden=false;
- const status=r?pilotStatus(r,bookings,slot()):null,invalid=slotErrors().length>0;
+ const status=r?pilotStatus(r,availabilityBookings(),slot()):null,invalid=slotErrors().length>0;
  if(r)chosen=new Set([...chosen].filter(seat=>!status.occupied.has(seat)));scene?.setSeatSelection?.(selected,[...chosen]);
  const evidenceOpen=panel.dataset.space===selected&&panel.querySelector('.nav-evidence')?.open;panel.dataset.space=selected||'';
  const title=entry?.displayName||r?.name||'Помещение модели',number=entry?.label||r?.number;
  const panelGroup=entry&&campus.floors.get(entry.floor)?.source.sourceKind==='wayfinding-panel'&&/^\d{3}\s*[-–—]\s*\d{3}$/u.test(number);
- panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(number)}</h2><p class="nav-room-title">${e(title)}</p>${panelGroup?'<p class="nav-note">Панель показывает эту группу целиком. Отдельные двери на схеме не различимы.</p>':''}<p class="nav-kind"><span class="nav-space-meta">${r?'Пилотное пространство':entry?.directoryRoom?'Кабинет в макете':'Помещение модели'} · ${r?.floor||entry.floor}-й этаж</span>${r?'<span class="nav-concept-note">Оборудование и размещение — концепция</span>':''}</p>${r?`<div class="nav-equipment">${r.equipment.map(x=>`<span>${e(x)}</span>`).join('')}</div>`:''}<div class="nav-actions">${r&&!success&&!bookingOpen?`<button class="nav-btn nav-btn-primary" data-show-seats>${icon('seat')}Выбрать места</button>`:''}<button class="nav-btn ${r?'':'nav-btn-primary'}" data-route${entry?.point?'':' disabled'}>${icon('route')}${routePreferences().stepFree?'Маршрут без лестниц':'Как добраться'}</button>${entry?.point&&!routePreferences().stepFree?'<button type="button" class="nav-text-btn" data-step-free-route>Без лестниц</button>':''}${!bookingOpen?`<button class="nav-text-btn" data-start${entry?.point?'':' disabled'}>Начать отсюда</button>`:''}<button class="nav-btn" data-contact-room="${e(number)}" aria-label="Связаться">${icon('mail')}Связаться</button></div>${routeFeedback?`<p id="nav-route-feedback" class="nav-field-error" role="status" tabindex="-1">${e(routeFeedback)}</p>${routePreferences().stepFree&&!mapRouting?.error?'<a class="nav-text-btn" href="./orientation.html#access">Доступность и контакты университета →</a>':''}`:''}${r?success?.roomId===r.id?`<div class="nav-success"><strong>Бронь сохранена.</strong><p class="nav-ticket-room">${e(title)}</p><p>№${e(success.id.slice(0,6).toUpperCase())} · ${e(number)}<br>${e(success.date)} · ${slotLabel(success.start)}–${slotLabel(success.start+success.hours)}<br>Места ${success.seatIds.join(', ')} · Бесплатно</p><p>Сохранено в этом браузере. Это не пропуск в университет.</p><button class="nav-btn nav-btn-primary nav-btn-wide" data-route>Показать путь</button><button class="nav-btn nav-btn-wide" data-history>Мои брони</button><div class="nav-email-send-box"><label for="nav-booking-email-input">Отправить подтверждение на почту</label><div class="nav-email-send-row"><input type="email" id="nav-booking-email-input" placeholder="student@sutd.ru" autocomplete="email"><button type="button" class="nav-btn nav-btn-primary" id="nav-booking-send-btn">Отправить</button></div><p id="nav-booking-send-status" class="nav-note" style="margin:5px 0 0;" hidden></p></div><a class="nav-text-btn" href="./email.html#${e(success.id)}">Образец письма · без отправки</a></div>`:bookingOpen?`<form id="nav-reservation-form" novalidate><div id="nav-booking-time"></div><h3>Выбери свободные места</h3><div class="nav-seat-grid" data-seat-layout="${e(r.spaceId)}" data-room-style="${e(r.style)}" role="group" aria-label="Восемь учебных мест">${seatLayout(r.style,r.spaceId).map(position=>{const seat=position.seatId,occupied=status.occupied.has(seat);return `<button type="button" class="nav-seat" style="--seat-x:${50+position.x*110}%;--seat-z:${50+position.z*118}%;--seat-angle:${position.angle}rad" data-seat="${seat}" aria-pressed="${chosen.has(seat)}" aria-label="Место ${seat}: ${occupied?'занято':chosen.has(seat)?'выбрано':'свободно'}"${occupied||invalid?' disabled':''}><span class="nav-seat-number">${seat}${occupied?' ×':''}</span><small>${occupied?'Занято':chosen.has(seat)?'Выбрано':'Свободно'}</small></button>`}).join('')}</div><div class="nav-seat-legend">○ Свободно · выделение — выбрано · × Занято</div><p class="nav-field-error" role="alert">${e(bookingError||storageError||slotErrors().join(' '))}</p><div class="nav-book-total"><span>Мест: ${chosen.size} · ${e(slot().hours||'—')} ч</span><strong>Бесплатно</strong></div><button class="nav-btn nav-btn-primary nav-btn-wide" type="submit"${busy||invalid||storageError||!status.free?' disabled':''}>${busy?'Сохраняем…':status.free?'Сохранить учебную бронь':'Все места заняты'}</button><p class="nav-disclosure">Учебная бронь в браузере. Это не пропуск.</p></form>`:`<p>Восемь учебных мест · <strong>Бесплатно</strong><br>${e(status.text)} на выбранное время.</p>`:'<p class="nav-note">Бесплатная учебная бронь доступна в восьми пилотных пространствах. Открой «Найти место».</p>'}${entry?.directoryRoom?`<div class="nav-placement-note"><strong>Номер по навигационной панели</strong><details class="nav-evidence"${evidenceOpen?' open':''}><summary>${entry.directoryRoom.evidence_status==='conflicting'?'Источники расходятся':entry.directoryRoom.evidence_status==='historical'?'По архиву · сведения и источник':'Сведения и источник'}</summary><p>${e(roomEvidence(entry.directoryRoom))}</p><small>Индекс модели: ${e(entry.modelIndex)}</small><a href="${e(directory.sources[entry.directoryRoom.source_ids[0]].url)}" target="_blank" rel="noopener">Источник о кабинете</a></details></div>`:''}<p class="nav-disclosure">${r?'Размещение и оборудование условные. Пилотное пространство — авторская концепция; реальный доступ не предоставляется.':entry?.placement?'Номер и расположение — по панели; назначение — по справочнику.':'Схема по источнику этажа. Современное назначение не установлено.'}</p>`;
+ panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(number)}</h2><p class="nav-room-title">${e(title)}</p>${panelGroup?'<p class="nav-note">Панель показывает эту группу целиком. Отдельные двери на схеме не различимы.</p>':''}<p class="nav-kind"><span class="nav-space-meta">${r?'Пилотное пространство':entry?.directoryRoom?'Кабинет в макете':'Помещение модели'} · ${r?.floor||entry.floor}-й этаж</span>${r?'<span class="nav-concept-note">Оборудование и размещение — концепция</span>':''}</p>${r?`<div class="nav-equipment">${r.equipment.map(x=>`<span>${e(x)}</span>`).join('')}</div>`:''}<div class="nav-actions">${r&&!success&&!bookingOpen?`<button class="nav-btn nav-btn-primary" data-show-seats>${icon('seat')}Выбрать места</button>`:''}<button class="nav-btn ${r?'':'nav-btn-primary'}" data-route${entry?.point?'':' disabled'}>${icon('route')}${routePreferences().stepFree?'Маршрут без лестниц':'Как добраться'}</button>${entry?.point&&!routePreferences().stepFree?'<button type="button" class="nav-text-btn" data-step-free-route>Без лестниц</button>':''}${!bookingOpen?`<button class="nav-text-btn" data-start${entry?.point?'':' disabled'}>Начать отсюда</button>`:''}${entry&&!bookingOpen?'<button type="button" class="nav-btn nav-room-share" data-share-room>Ссылка на помещение</button>':''}<button class="nav-btn" data-contact-room="${e(number)}" aria-label="Связаться">${icon('mail')}Связаться</button></div>${routeFeedback?`<p id="nav-route-feedback" class="nav-field-error" role="status" tabindex="-1">${e(routeFeedback)}</p>${routePreferences().stepFree&&!mapRouting?.error?'<a class="nav-text-btn" href="./orientation.html#access">Доступность и контакты университета →</a>':''}`:''}${r?success?.roomId===r.id?`<div class="nav-success"><strong>Бронь сохранена.</strong><p class="nav-ticket-room">${e(title)}</p><p>№${e(success.id.slice(0,6).toUpperCase())} · ${e(number)}<br>${e(success.date)} · ${slotLabel(success.start)}–${slotLabel(success.start+success.hours)}<br>Места ${success.seatIds.join(', ')} · Бесплатно</p><p>Сохранено в этом браузере. Это не пропуск в университет.</p><button class="nav-btn nav-btn-primary nav-btn-wide" data-route>Показать путь</button><button class="nav-btn nav-btn-wide" data-history>Мои брони</button><div class="nav-email-send-box"><label for="nav-booking-email-input">Отправить подтверждение на почту</label><div class="nav-email-send-row"><input type="email" id="nav-booking-email-input" placeholder="student@sutd.ru" autocomplete="email"><button type="button" class="nav-btn nav-btn-primary" id="nav-booking-send-btn">Отправить</button></div><p id="nav-booking-send-status" class="nav-note" style="margin:5px 0 0;" hidden></p></div><a class="nav-text-btn" href="./email.html#${e(success.id)}">Образец письма · без отправки</a></div>`:bookingOpen?`<form id="nav-reservation-form" novalidate>${editingBooking?'<p class="nav-edit-booking">Изменение учебной брони</p>':''}<div id="nav-booking-time"></div><h3>Выбери свободные места</h3><div class="nav-seat-grid" data-seat-layout="${e(r.spaceId)}" data-room-style="${e(r.style)}" role="group" aria-label="Восемь учебных мест">${seatLayout(r.style,r.spaceId).map(position=>{const seat=position.seatId,occupied=status.occupied.has(seat);return `<button type="button" class="nav-seat" style="--seat-x:${50+position.x*110}%;--seat-z:${50+position.z*118}%;--seat-angle:${position.angle}rad" data-seat="${seat}" aria-pressed="${chosen.has(seat)}" aria-label="Место ${seat}: ${occupied?'занято':chosen.has(seat)?'выбрано':'свободно'}"${occupied||invalid?' disabled':''}><span class="nav-seat-number">${seat}${occupied?' ×':''}</span><small>${occupied?'Занято':chosen.has(seat)?'Выбрано':'Свободно'}</small></button>`}).join('')}</div><div class="nav-seat-legend">○ Свободно · выделение — выбрано · × Занято</div><p class="nav-field-error" role="alert">${e(bookingError||storageError||slotErrors().join(' '))}</p><div class="nav-book-total"><span>Мест: ${chosen.size} · ${e(slot().hours||'—')} ч</span><strong>Бесплатно</strong></div><button class="nav-btn nav-btn-primary nav-btn-wide" type="submit"${busy||invalid||storageError||!status.free?' disabled':''}>${busy?'Сохраняем…':status.free?(editingBooking?'Сохранить изменения':'Сохранить учебную бронь'):'Все места заняты'}</button>${editingBooking?'<button type="button" class="nav-btn nav-btn-wide" data-discard-edit>Выйти без сохранения</button>':''}<p class="nav-disclosure">Учебная бронь в браузере. Это не пропуск.</p></form>`:`<p>Восемь учебных мест · <strong>Бесплатно</strong><br>${e(status.text)} на выбранное время.</p>`:'<p class="nav-note">Бесплатная учебная бронь доступна в восьми пилотных пространствах. Открой «Найти место».</p>'}${entry?.directoryRoom?`<div class="nav-placement-note"><strong>Номер по навигационной панели</strong><details class="nav-evidence"${evidenceOpen?' open':''}><summary>${entry.directoryRoom.evidence_status==='conflicting'?'Источники расходятся':entry.directoryRoom.evidence_status==='historical'?'По архиву · сведения и источник':'Сведения и источник'}</summary><p>${e(roomEvidence(entry.directoryRoom))}</p><small>Индекс модели: ${e(entry.modelIndex)}</small><a href="${e(directory.sources[entry.directoryRoom.source_ids[0]].url)}" target="_blank" rel="noopener">Источник о кабинете</a></details></div>`:''}<p class="nav-disclosure">${r?'Размещение и оборудование условные. Пилотное пространство — авторская концепция; реальный доступ не предоставляется.':entry?.placement?'Номер и расположение — по панели; назначение — по справочнику.':'Схема по источнику этажа. Современное назначение не установлено.'}</p>`;
  if(bookingOpen&&!success&&r){$('nav-booking-time').append(time);time.open=true;}if(success&&r?.id===success.roomId)panel.scrollTop=0;
 }
 
 function updateAll(){renderResults();renderDetail();$('nav-booking-count').textContent=bookings.length;if($('nav-history').open)renderHistory();}
-function select(id,{keepUrl=false}={}){if(!visible.has(id)){toast('Помещение скрыто фильтром. Сначала сбрось фильтры.');return}clearRoute();selected=id;directoryEntry=null;bookingOpen=false;chosen.clear();success=null;bookingError='';const entry=campus?.entries.get(id);if(entry)setLevel(entry.floor);scene?.select(id,{focus:true});closeList();renderResults();renderDetail();if(!keepUrl){const url=new URL(location.href);url.search='';writeRoutePreferences(url,routePreferences());if(origin!==defaultOrigin)url.searchParams.set('from',origin);url.hash=`space=${encodeURIComponent(id)}`;history.replaceState(null,'',url);}$('nav-detail').querySelector('h2')?.setAttribute('tabindex','-1');$('nav-detail').querySelector('h2')?.focus({preventScroll:true});}
-function selectDirectory(number){clearSelection();directoryEntry=directory?.rooms.find(r=>r.number===number);closeList();renderDetail();}
+function select(id,{keepUrl=false}={}){if(!visible.has(id)){toast('Помещение скрыто фильтром. Сначала сбрось фильтры.');return}clearRoute();selected=id;directoryEntry=null;bookingOpen=false;editingBooking=null;chosen.clear();success=null;bookingError='';const entry=campus?.entries.get(id);if(entry)setLevel(entry.floor);scene?.select(id,{focus:true});closeList();renderResults();renderDetail();if(!keepUrl){const url=new URL(location.href);url.search='';writeRoutePreferences(url,routePreferences());if(origin!==defaultOrigin)url.searchParams.set('from',origin);url.hash=`space=${encodeURIComponent(id)}`;history.replaceState(null,'',url);}$('nav-detail').querySelector('h2')?.setAttribute('tabindex','-1');$('nav-detail').querySelector('h2')?.focus({preventScroll:true});}
+function selectDirectory(number){clearSelection();directoryEntry=directory?.rooms.find(r=>r.number===number);closeList();renderDetail();const title=$('nav-detail').querySelector('h2');title?.setAttribute('tabindex','-1');title?.focus({preventScroll:true});}
 async function displayRoute(){
  const target=current();
  if(!campus||!target?.point)return;
@@ -350,7 +403,7 @@ function renderRoute(){
  }).join('');
  const journey=graphicsAvailable?`<div class="nav-journey">
   <button type="button" class="nav-btn nav-btn-wide" data-route-play aria-pressed="false">${icon('play')}Показать движение</button>
-  <label for="nav-route-progress">Просмотр маршрута <output id="nav-route-position">Начало · ${route.from.floor}-й этаж</output></label>
+  <label for="nav-route-progress">Просмотр маршрута <output id="nav-route-position" aria-live="off">Начало · ${route.from.floor}-й этаж</output></label>
   <input id="nav-route-progress" type="range" min="0" max="1000" step="1" value="0" aria-label="Положение на учебном маршруте">
   <p>Демонстрация движения по схеме</p>
  </div>`:'';
@@ -359,6 +412,14 @@ function renderRoute(){
   <h2 id="nav-route-title" tabindex="-1">Как добраться</h2>
   <p class="nav-kind">${previewRequested?'Локальный предпросмотр карты':routePreferences().stepFree?'Маршрут без лестниц':'Учебный маршрут по модели'}</p>
   <p class="nav-route-endpoints">${e(route.from.label)} → ${e(route.to.label)}</p>
+  <section class="nav-route-guide" aria-label="Шаги маршрута">
+   <div class="nav-route-guide-current" aria-live="polite" aria-atomic="true"><strong data-guide-position></strong><p data-guide-instruction></p></div>
+   <div class="nav-route-guide-actions">
+    <button type="button" class="nav-btn" data-route-prev>Предыдущий шаг</button>
+    <button type="button" class="nav-btn nav-btn-primary" data-route-next>Следующий шаг</button>
+   </div>
+   <button type="button" class="nav-text-btn nav-guide-stair" data-guide-stair hidden></button>
+  </section>
   ${detour?`<p class="nav-route-evidence">На панели 2-го этажа указан обход через 3-й. Спуск к этой секции — по лестнице №${detour.stairNumber}. <a href="./orientation.html#panel-2">Фото указателя →</a></p>`:''}
   ${destinationSign?`<p class="nav-route-evidence">На указателе 4-го этажа ищите диапазон ${destinationSign}. <a href="./orientation.html#panel-4">Фото указателя →</a></p>`:''}
   ${graphicsAvailable?'':scene?'<p>Выберите этаж, чтобы увидеть его участок пути. А — начало, Б — цель, цифры — номера лестниц.</p>':'<p>Карта недоступна. Следуйте текстовым шагам маршрута.</p>'}
@@ -366,7 +427,7 @@ function renderRoute(){
   <ol>${steps}</ol>
   ${journey}
   <div class="nav-actions">
-   ${scene?`<button type="button" class="nav-btn" data-route-all>${graphicsAvailable?'Весь маршрут':'Этаж отправления'}</button><button type="button" class="nav-btn" data-route-next>Следующий шаг</button>`:''}
+   ${scene?`<button type="button" class="nav-btn" data-route-all>${graphicsAvailable?'Весь маршрут':'Этаж отправления'}</button>`:''}
    <button type="button" class="nav-btn" data-route-share>Ссылка на маршрут</button>
   </div>
   ${pilot()?'<button type="button" class="nav-btn nav-btn-primary nav-btn-wide" data-route-book>Выбрать места</button>':'<button type="button" class="nav-btn nav-btn-wide" data-route-close>К помещению</button>'}
@@ -406,6 +467,22 @@ function setOrigin(id){
  renderDetail();
  return true;
 }
+function persistOrigin(){
+ const url=new URL(location.href);
+ url.searchParams.delete('start');
+ url.searchParams.set('from',origin);
+ history.replaceState(null,'',url);
+}
+function populateOriginRooms(){
+ const select=$('nav-origin');
+ for(const [floor,details] of campus.floors){
+  const group=document.createElement('optgroup');
+  group.label=`${floor}-й этаж · помещения`;
+  const rooms=details.spaces.filter(space=>space.point).sort((a,b)=>a.label.localeCompare(b.label,'ru',{numeric:true}));
+  for(const room of rooms)group.append(new Option(room.displayName?`${room.label} · ${room.displayName}`:room.label,room.id));
+  if(group.childElementCount)select.append(group);
+ }
+}
 async function copyLink(url,container,label){
  try{
   await navigator.clipboard.writeText(url.href);
@@ -426,18 +503,70 @@ async function copyLink(url,container,label){
 function copyRoute(){
  if(route)copyLink(createRouteLink(location.href,route.from.id,route.to.id,routePreferences()),$('nav-route-overview'),'Ссылка на маршрут');
 }
-function renderHistory(){const list=$('nav-history-list');list.innerHTML=bookings.length?[...bookings].sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start).map(b=>{const r=pilotRoomById(b.roomId);return `<article class="nav-record"><h3>${e(pilotDisplayNumber(r))} · ${e(r.name)}</h3><p>№${e(b.id.slice(0,6).toUpperCase())} · ${e(b.date)}<br>${slotLabel(b.start)}–${slotLabel(b.start+b.hours)} · места ${b.seatIds.join(', ')} · Бесплатно</p><div><button class="nav-btn" data-history-route="${e(r.spaceId)}">Как добраться</button><a class="nav-btn" href="./email.html#${e(b.id)}">Образец письма</a><button class="nav-btn" data-cancel="${e(b.id)}">Отменить</button></div></article>`}).join(''):'<p class="nav-note">Здесь появятся сохранённые учебные записи. Выбери пилотную зону на карте или в списке.</p>';$('nav-reset-demo').disabled=busy;$('nav-reset-demo').hidden=!bookings.length&&!storageError;}
+function renderHistory(){const list=$('nav-history-list');list.innerHTML=bookings.length?[...bookings].sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start).map(b=>{const r=pilotRoomById(b.roomId);return `<article class="nav-record"><h3>${e(pilotDisplayNumber(r))} · ${e(r.name)}</h3><p>№${e(b.id.slice(0,6).toUpperCase())} · ${e(b.date)}<br>${slotLabel(b.start)}–${slotLabel(b.start+b.hours)} · места ${b.seatIds.join(', ')} · Бесплатно</p><div class="nav-record-actions"><button class="nav-btn" data-history-route="${e(r.spaceId)}">Как добраться</button><button class="nav-btn" data-history-edit="${e(b.id)}">Изменить бронь</button><a class="nav-btn" href="./email.html#${e(b.id)}">Образец письма</a><button class="nav-btn" data-cancel="${e(b.id)}">Отменить</button></div></article>`}).join(''):'<p class="nav-note">Здесь появятся сохранённые учебные записи. Выбери пилотную зону на карте или в списке.</p>';$('nav-reset-demo').disabled=busy;$('nav-reset-demo').hidden=!bookings.length&&!storageError;}
 function openHistory(){renderHistory();if(!$('nav-history').open)$('nav-history').showModal();}
+function editBooking(id){
+ const booking=bookings.find(row=>row.id===id);
+ const room=booking&&pilotRoomById(booking.roomId);
+ if(!room||!campus?.entries.has(room.spaceId)){
+  toast('Запись пока недоступна для редактирования.');
+  return;
+ }
+ $('nav-history').close();
+ resetFilters();
+ select(room.spaceId);
+ editingBooking=booking;
+ bookingOpen=true;
+ $('nav-date').value=booking.date;
+ $('nav-start-time').value=String(booking.start);
+ $('nav-hours').value=String(booking.hours);
+ chosen=new Set(booking.seatIds);
+ updateAll();
+ $('nav-date').focus();
+}
 async function writeChange(operation){if(busy)return;busy=true;try{const run=()=>{const fresh=loadBookings(storage);if(fresh.error)throw Error(fresh.error);const result=operation(fresh.bookings);if(result.error)throw Error(Object.values(result.error).join(' '));const saved=saveBookings(storage,result.bookings);if(saved.error)throw Error(saved.error);bookings=result.bookings;storageError=null;return result;};return navigator.locks?await navigator.locks.request(STORAGE_KEY,run):run();}finally{busy=false;}}
-async function submit(){if(busy)return;bookingError='';const r=pilot();if(!r)return;const request={roomId:r.id,seatIds:[...chosen],...slot()};try{const result=await writeChange(rows=>createBooking(rows,request,today));if(result?.booking){if(pilot()?.id===request.roomId){success=result.booking;chosen.clear();}toast('Учебная бронь сохранена в этом браузере.');}}catch(error){bookingError=error.message;toast(error.message);}updateAll();}
+async function submit(){
+ if(busy)return;
+ bookingError='';
+ const room=pilot();
+ if(!room)return;
+ const original=editingBooking;
+ const request={roomId:room.id,seatIds:[...chosen],...slot()};
+ const active=()=>bookingOpen&&pilot()?.id===room.id&&editingBooking===original;
+ try{
+  const result=await writeChange(rows=>original?updateBooking(rows,original,request,today):createBooking(rows,request,today));
+  if(result?.booking){
+   if(active()){
+    editingBooking=null;
+    bookingOpen=false;
+    success=result.booking;
+    chosen.clear();
+   }
+   toast(original?'Изменения учебной брони сохранены.':'Учебная бронь сохранена в этом браузере.');
+  }
+ }catch(error){
+  if(active())bookingError=error.message;
+  toast(error.message);
+ }
+ updateAll();
+ if(success){
+  const receipt=$('nav-detail').querySelector('.nav-success > strong');
+  receipt?.setAttribute('tabindex','-1');
+  receipt?.focus({preventScroll:true});
+ }
+}
 function confirmAction(title,text,yes,action){$('nav-confirm-title').textContent=title;$('nav-confirm-text').textContent=text;$('nav-confirm-yes').textContent=yes;pendingConfirm=action;$('nav-confirm').showModal();}
 $('nav-confirm-no').addEventListener('click',()=>{$('nav-confirm').close();pendingConfirm=null});$('nav-confirm-yes').addEventListener('click',async()=>{if(busy)return;const action=pendingConfirm;pendingConfirm=null;$('nav-confirm').close();try{await action?.();}catch(error){toast(error.message)}updateAll()});
 $('nav-results').addEventListener('click',event=>{const id=event.target.closest('[data-select]')?.dataset.select;if(id)select(id)});$('nav-directory-results').addEventListener('click',event=>{const n=event.target.closest('[data-directory]')?.dataset.directory;if(n)selectDirectory(n)});
-$('nav-detail').addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;if(b.hasAttribute('data-close'))closePassport();if(b.hasAttribute('data-route'))displayRoute();if(b.hasAttribute('data-step-free-route')){$('nav-route-mode').value='step-free';displayRoute();}if(b.hasAttribute('data-start')&&selected){setOrigin(selected);toast('Точка старта изменена. Теперь выбери куда идти.');}if(b.hasAttribute('data-history'))openHistory();if(b.hasAttribute('data-change-time')){openList();$('nav-time').open=true;$('nav-date').focus();}if(b.hasAttribute('data-show-seats')){bookingOpen=true;renderDetail();$('nav-detail').querySelector('[data-seat]:not(:disabled)')?.focus();}if(b.dataset.contactRoom)window.openContactModal?.({room:b.dataset.contactRoom,subject:'Вопрос по аудитории '+b.dataset.contactRoom});const sendBtn=event.target.closest('#nav-booking-send-btn');if(sendBtn&&success){const input=$('nav-booking-email-input'),status=$('nav-booking-send-status');const email=input?.value?.trim();if(!email){if(status){status.hidden=false;status.textContent='Укажите email для отправки.';}return;}if(status){status.hidden=false;status.textContent='Отправляем…';}sendBtn.disabled=true;(async()=>{try{const res=await sendBookingNotification(success,email);if(res.success){if(status){status.hidden=false;status.innerHTML='<strong>Отправлено!</strong> Подтверждение ушло на почту.';}toast('Бронь отправлена на '+email);}else{if(status){status.hidden=false;status.textContent=res.message;}toast(res.message);}}finally{sendBtn.disabled=false;}})();}if(b.dataset.seat){const seat=Number(b.dataset.seat);chosen.has(seat)?chosen.delete(seat):chosen.add(seat);bookingError='';renderDetail();$('nav-detail').querySelector(`[data-seat="${seat}"]`)?.focus();}});$('nav-detail').addEventListener('submit',event=>{event.preventDefault();submit()});
+$('nav-detail').addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;if(b.hasAttribute('data-close'))closePassport();if(b.hasAttribute('data-share-room')&&current())copyLink(createSpaceLink(location.href,selected),$('nav-detail'),'Ссылка на помещение');if(b.hasAttribute('data-discard-edit')){closePassport();openHistory();return;}if(b.hasAttribute('data-route'))displayRoute();if(b.hasAttribute('data-step-free-route')){$('nav-route-mode').value='step-free';displayRoute();}if(b.hasAttribute('data-start')&&selected&&setOrigin(selected)){persistOrigin();toast('Точка старта изменена. Выберите, куда идти.');}if(b.hasAttribute('data-history'))openHistory();if(b.hasAttribute('data-change-time')){openList();$('nav-time').open=true;$('nav-date').focus();}if(b.hasAttribute('data-show-seats')){bookingOpen=true;renderDetail();$('nav-detail').querySelector('[data-seat]:not(:disabled)')?.focus();}if(b.dataset.contactRoom)window.openContactModal?.({room:b.dataset.contactRoom,subject:'Вопрос по аудитории '+b.dataset.contactRoom});const sendBtn=event.target.closest('#nav-booking-send-btn');if(sendBtn&&success){const input=$('nav-booking-email-input'),status=$('nav-booking-send-status');const email=input?.value?.trim();if(!email){if(status){status.hidden=false;status.textContent='Укажите email для отправки.';}return;}if(status){status.hidden=false;status.textContent='Отправляем…';}sendBtn.disabled=true;(async()=>{try{const res=await sendBookingNotification(success,email);if(res.success){if(status){status.hidden=false;status.innerHTML='<strong>Отправлено!</strong> Подтверждение ушло на почту.';}toast('Бронь отправлена на '+email);}else{if(status){status.hidden=false;status.textContent=res.message;}toast(res.message);}}finally{sendBtn.disabled=false;}})();}if(b.dataset.seat){const seat=Number(b.dataset.seat);chosen.has(seat)?chosen.delete(seat):chosen.add(seat);bookingError='';renderDetail();$('nav-detail').querySelector(`[data-seat="${seat}"]`)?.focus();}});$('nav-detail').addEventListener('submit',event=>{event.preventDefault();submit()});
 function leaveRouteStair(){
  const index=routeStairFocus;
- setLevel(0);
- $('nav-route').querySelector(`[data-route-stair="${index}"]`)?.focus();
+ const trigger=stairTrigger;
+ if(stairReturnStep>=0)showRouteStep(stairReturnStep);
+ else setLevel(0);
+ stairReturnStep=-1;
+ stairTrigger=null;
+ (trigger?.isConnected&&!trigger.hidden?trigger:$('nav-route').querySelector(`[data-route-stair="${index}"]`))?.focus();
 }
 $('nav-route').addEventListener('click',event=>{
  const button=event.target.closest('button');
@@ -447,30 +576,62 @@ $('nav-route').addEventListener('click',event=>{
   returnToRoom();
   $('nav-detail').querySelector(bookingOpen?'[data-seat]:not(:disabled)':'[data-route]')?.focus();
  }
- if(button.hasAttribute('data-route-origin')){openList();$('nav-origin').focus();}
+ if(button.hasAttribute('data-route-origin')){openList();$('nav-origin-tools').hidden=false;$('nav-origin').focus();}
  if(button.hasAttribute('data-route-play')){
   if(button.getAttribute('aria-pressed')==='true')scene?.pausePreview();
-  else{setLevel(0);scene?.playPreview();}
+  else{
+   setLevel(0);
+   seekingPreview=true;
+   scene?.playPreview();
+   seekingPreview=false;
+  }
  }
- if(button.dataset.routeStair!==undefined){
-  setLevel(0,true,Number(button.dataset.routeStair));
+ const stair=button.dataset.routeStair??button.dataset.guideStair;
+ if(stair!==undefined){
+  stairReturnStep=routeStep;
+  stairTrigger=button;
+  setLevel(0,true,Number(stair));
   $('nav-stair-title').focus({preventScroll:true});
  }
  if(button.hasAttribute('data-stair-back'))leaveRouteStair();
  if(button.hasAttribute('data-route-all'))setLevel(0);
- if(button.hasAttribute('data-route-next')&&route){
-  const next=(routeStep+1)%route.floors.length;
-  setLevel(route.floors[next]);
-  setRouteStep(next);
- }
- if(button.dataset.routeFloor){
-  setLevel(button.dataset.routeFloor);
-  setRouteStep(Number(button.dataset.routeStep));
- }
+ if(button.hasAttribute('data-route-next'))showRouteStep(routeStep+1);
+ if(button.hasAttribute('data-route-prev'))showRouteStep(routeStep-1);
+ if(button.dataset.routeFloor)showRouteStep(Number(button.dataset.routeStep));
  if(button.hasAttribute('data-route-share'))copyRoute();
 });
-$('nav-route').addEventListener('input',event=>{if(event.target.id==='nav-route-progress')scene?.seekPreview(Number(event.target.value)/1000)});
+$('nav-route').addEventListener('input',event=>{
+ if(event.target.id!=='nav-route-progress')return;
+ seekingPreview=true;
+ scene?.seekPreview(Number(event.target.value)/1000);
+ seekingPreview=false;
+});
 function openSearch(){if(restoringSearchFocus)return;if(mode==='contact'){mode='all';updateAll()}openList()}
+function searchTargets(){
+ return [...$('nav-sidebar').querySelectorAll('.nav-result, .nav-service-actions > :first-child')]
+  .filter(target=>!target.closest('[hidden]')&&!target.disabled);
+}
+$('nav-query').addEventListener('keydown',event=>{
+ if(event.isComposing||event.altKey||event.ctrlKey||event.metaKey)return;
+ if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;
+ openSearch();
+ const targets=searchTargets();
+ if(!targets.length)return;
+ event.preventDefault();
+ if(event.key==='Enter'){
+  const rooms=targets.filter(target=>target.matches('.nav-result'));
+  if(event.currentTarget.value.trim()&&rooms.length===1&&targets.length===1)rooms[0].click();
+  else targets[0].focus();
+ }else targets.at(event.key==='ArrowUp'?-1:0).focus();
+});
+document.querySelector('.nav-result-scroll').addEventListener('keydown',event=>{
+ if(!['ArrowDown','ArrowUp'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+ const targets=searchTargets(),index=targets.indexOf(event.target);
+ if(index<0)return;
+ event.preventDefault();
+ if(event.key==='ArrowUp'&&index===0)$('nav-query').focus();
+ else targets[index+(event.key==='ArrowUp'?-1:1)]?.focus();
+});
 document.querySelector('.nav-search').addEventListener('click',openSearch);$('nav-query').addEventListener('focus',openSearch);$('nav-query').addEventListener('input',()=>{
  const request=filter().request;
  const upcoming=request?.nearestHour?nextWorkHour():null;
@@ -514,17 +675,14 @@ $('nav-filter-reset').addEventListener('click',()=>{
  updateAll();
 });
 $('nav-origin').addEventListener('change',()=>{
- const url=new URL(location.href);
- const rebuild=url.searchParams.has('to')&&Boolean(current()?.point);
+ const rebuild=(Boolean(route)||new URL(location.href).searchParams.has('to'))&&Boolean(current()?.point);
  if(!setOrigin($('nav-origin').value))return;
  if(rebuild){
   closeList();
   displayRoute();
   return;
  }
- url.searchParams.delete('start');
- url.searchParams.set('from',origin);
- history.replaceState(null,'',url);
+ persistOrigin();
 });
 $('nav-start-share').addEventListener('click',()=>{
  if(campus?.entries.get(origin)?.point)copyLink(createStartLink(location.href,origin),$('nav-origin-tools'),'Ссылка на точку старта');
@@ -541,7 +699,7 @@ $('nav-projection').addEventListener('click',()=>{const plan=$('nav-projection')
 $('nav-zoom-in').addEventListener('click',()=>scene?.zoom(1.2));$('nav-zoom-out').addEventListener('click',()=>scene?.zoom(1/1.2));$('nav-map-reset').addEventListener('click',()=>scene?.reset());$('nav-list-toggle').addEventListener('click',()=>{app.classList.toggle('is-list-open');syncSidebar()});
 $('nav-list-close').addEventListener('click',closeSearch);
 $('nav-history-open').addEventListener('click',openHistory);$('nav-history-close').addEventListener('click',()=>$('nav-history').close());
-$('nav-history-list').addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;if(b.dataset.historyRoute){$('nav-history').close();resetFilters();select(b.dataset.historyRoute);displayRoute();}if(b.dataset.cancel)confirmAction('Отменить бронь?','Выбранные места снова станут доступны.','Да, отменить',async()=>{await writeChange(rows=>({bookings:cancelBooking(rows,b.dataset.cancel)}));if(success?.id===b.dataset.cancel)success=null;toast('Бронь отменена. Места освобождены.');});});
+$('nav-history-list').addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;if(b.dataset.historyEdit){editBooking(b.dataset.historyEdit);return;}if(b.dataset.historyRoute){$('nav-history').close();resetFilters();select(b.dataset.historyRoute);displayRoute();}if(b.dataset.cancel)confirmAction('Отменить бронь?','Выбранные места снова станут доступны.','Да, отменить',async()=>{await writeChange(rows=>({bookings:cancelBooking(rows,b.dataset.cancel)}));if(success?.id===b.dataset.cancel)success=null;toast('Бронь отменена. Места освобождены.');});});
 $('nav-reset-demo').addEventListener('click',()=>confirmAction('Сбросить учебные записи?','Будут удалены только записи этого приложения в этом браузере.','Сбросить',()=>{const saved=saveBookings(storage,[]);if(saved.error)throw Error(saved.error);bookings=[];storageError=null;success=null;chosen.clear();toast('Учебные записи сброшены.');}));
 window.addEventListener('storage',event=>{if(event.key!==STORAGE_KEY&&event.key!==null)return;const fresh=loadBookings(storage);bookings=fresh.bookings;storageError=fresh.error;success=null;updateAll();toast('Брони обновлены из другой вкладки.');});
 window.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();openList();$('nav-query').focus();return;}if(event.key==='Escape'&&!document.querySelector('dialog[open]')){if(app.classList.contains('is-list-open')){event.preventDefault();closeSearch();return}if(routeStairFocus!==null){leaveRouteStair();return;}if(route){returnToRoom();$('nav-detail').querySelector('[data-route]')?.focus()}else if(selected||directoryEntry){closePassport()}else setLevel(0);}});
@@ -579,11 +737,12 @@ async function loadServices(){
 }
 void loadServices();
 try{const load=async path=>{const r=await fetch(path);if(!r.ok)throw Error(path);return r.json()};const [geometry,spaces,real]=await Promise.all([load('./data/floor-geometry.json?v=20261106-hover1'),load('./data/floor-spaces.json'),load('./data/directory.json')]);directory=real;campus=applyRoomPlacements(createCampusNavigator(geometry,spaces),directory);
+ populateOriginRooms();
  mapRouting=loadMapClosures(campus,{storage});
  const versionNote=$('nav-map-version');
  versionNote.hidden=!previewRequested;
  versionNote.textContent=mapRouting.error||'Предпросмотр локальной версии карты. Закрытия действуют только здесь.';
- try{const {createNavigatorScene}=await import('./navigator-scene.js?v=20261112-centered-entry');scene=createNavigatorScene({container:$('campus-map'),campus,onSelect:select,onFloor:showMapFloor,onSeatSelect:(spaceId,seatId)=>{if(selected!==spaceId)select(spaceId);bookingOpen=true;const r=pilot();if(!r||slotErrors().length||pilotStatus(r,bookings,slot()).occupied.has(seatId))return;chosen.has(seatId)?chosen.delete(seatId):chosen.add(seatId);renderDetail();$('nav-detail').querySelector(`[data-seat="${seatId}"]`)?.focus({preventScroll:true});},onPreview:state=>{const button=$('nav-route').querySelector('[data-route-play]');if(!button)return;button.setAttribute('aria-pressed',String(state.playing));button.innerHTML=icon('play')+(state.playing?'Приостановить':state.done?'Показать ещё раз':'Показать движение');$('nav-route-progress').value=Math.round(state.progress*1000);$('nav-route-position').textContent=state.done?'Вы у цели':state.connection&&state.floor!==state.toFloor?`${routePreferences().stepFree?'Лифт':'Лестница'} · ${state.floor} → ${state.toFloor}`:`${state.floor||route?.from.floor||1}-й этаж · ${Math.round(state.progress*100)}%`;if(state.playing||state.done)setRouteStep(state.step);},onFailure:switchToPlan});graphicsAvailable=true;$('nav-loading').hidden=true;}catch{switchToPlan();}
+ try{const {createNavigatorScene}=await import('./navigator-scene.js?v=20261112-polish');scene=createNavigatorScene({container:$('campus-map'),campus,onSelect:select,onFloor:showMapFloor,onSeatSelect:(spaceId,seatId)=>{if(selected!==spaceId)select(spaceId);bookingOpen=true;const r=pilot();if(!r||slotErrors().length||pilotStatus(r,availabilityBookings(),slot()).occupied.has(seatId))return;chosen.has(seatId)?chosen.delete(seatId):chosen.add(seatId);renderDetail();$('nav-detail').querySelector(`[data-seat="${seatId}"]`)?.focus({preventScroll:true});},onPreview:state=>{const button=$('nav-route').querySelector('[data-route-play]');if(!button)return;button.setAttribute('aria-pressed',String(state.playing));button.innerHTML=icon('play')+(state.playing?'Приостановить':state.done?'Показать ещё раз':'Показать движение');$('nav-route-progress').value=Math.round(state.progress*1000);$('nav-route-position').textContent=state.done?'Вы у цели':state.connection&&state.floor!==state.toFloor?`${routePreferences().stepFree?'Лифт':'Лестница'} · ${state.floor} → ${state.toFloor}`:`${state.floor||route?.from.floor||1}-й этаж · ${Math.round(state.progress*100)}%`;if(state.playing||state.done||seekingPreview)setRouteStep(state.step);},onFailure:switchToPlan});graphicsAvailable=true;$('nav-loading').hidden=true;}catch{switchToPlan();}
  updateAll();
  const link=readNavigationLink(new URL(location.href),defaultOrigin);
  const target=link.target??pilotRoomById(link.roomId)?.spaceId??link.spaceId;

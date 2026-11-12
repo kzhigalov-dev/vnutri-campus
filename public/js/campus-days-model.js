@@ -1,4 +1,5 @@
-import {createRouteLink} from './navigation-link.js';
+import {createRouteLink} from './navigation-link.js?v=20261112-polish';
+import {mappedBuildingRoom} from './campus-buildings.js?v=20261112-polish';
 
 // Verified against the admissions office announcements, 12 November 2026.
 // Times carry an explicit Moscow offset; these records are not automatically synced.
@@ -11,9 +12,9 @@ export const upcomingOfficialEvents = (now = new Date()) => officialEvents.filte
 
 // These are illustrations, not a feed from the university.
 export const demoClasses = [
-  {id:'class-1', title:'Проектная практика', start:'10:00', end:'11:30', status:'moved', room:'462', previousRoom:'459', destination:'f4-s8'},
-  {id:'class-2', title:'История дизайна', start:'12:00', end:'13:30', status:'cancelled', room:'452'},
-  {id:'class-3', title:'Работа в мастерской', start:'14:00', end:'15:30', status:'scheduled', room:'484', destination:'f4-s20'},
+  {id:'class-1', title:'Проектная практика', start:'10:00', end:'11:30', status:'moved', building:'voznesensky', room:'462', previousRoom:'459', destination:'f4-s8'},
+  {id:'class-2', title:'История дизайна', start:'12:00', end:'13:30', status:'cancelled', building:'voznesensky', room:'452'},
+  {id:'class-3', title:'Работа в мастерской', start:'14:00', end:'15:30', status:'scheduled', building:'voznesensky', room:'484', destination:'f4-s20'},
 ];
 
 export const demoVisits = [
@@ -44,4 +45,18 @@ export function programLink(base, ids) {
   url.searchParams.set('visits', demoVisits.filter(visit => selected.has(visit.id)).map(visit => visit.id).join(','));
   return url;
 }
-export const routeLink = (base, destination) => createRouteLink(base, 'start-1', destination).href;
+export function visitItinerary(ids, visits = demoVisits) {
+  const selected = new Set(ids);
+  const stops = visits.filter(visit => selected.has(visit.id));
+  return stops.map((visit, index) => {
+    const previous = stops[index - 1] ?? null;
+    const origin = previous ? visitDestination(previous) : 'start-1';
+    const destination = visitDestination(visit);
+    return {visit, previous, route:origin && destination ? {origin, destination} : null};
+  });
+}
+function visitDestination(visit) {
+  const room = mappedBuildingRoom('voznesensky', visit.room);
+  return room && room.spaceId === visit.destination ? room.spaceId : null;
+}
+export const routeLink = (base, destination, origin = 'start-1') => createRouteLink(base, origin, destination).href;

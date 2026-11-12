@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rooms } from '../public/js/data.js';
-import { todayMoscow,addDays,filterRooms,occupiedSeats,createBooking,cancelBooking,loadBookings,saveBookings,validateRequest,STORAGE_KEY } from '../public/js/model.js';
+import { todayMoscow,addDays,filterRooms,occupiedSeats,createBooking,updateBooking,cancelBooking,loadBookings,saveBookings,STORAGE_KEY } from '../public/js/model.js';
 const TODAY='2026-10-29';
 const request=(extra={})=>({roomId:'r459',seatIds:[1],date:TODAY,start:13,hours:2,...extra});
 const make=(bookings=[],extra={})=>createBooking(bookings,request(extra),TODAY);
@@ -16,6 +16,27 @@ test('only exact integer numeric inputs accepted; bounded end time',()=>{for(con
 test('invalid dates and out-of-window dates rejected',()=>{for(const date of ['',null,'2026-02-30','2026-10-28','2026-11-13','2026-1-1'])assert.ok(make([],{date}).error);assert.ok(make([],{date:'2026-11-12'}).booking)});
 test('missing/invalid seats and room rejected',()=>{for(const seatIds of [[],[0],[9],[1,1],['1'],null,'1',[1.5]])assert.ok(make([],{seatIds}).error);assert.ok(make([],{roomId:null}).error)});
 test('cancel frees own seats while keeping other records and seeded occupancy',()=>{const a=make();const b=make(a.bookings,{seatIds:[4]});const remaining=cancelBooking(b.bookings,a.booking.id);assert.equal(remaining.length,1);assert.ok(make(remaining).booking);assert.ok(occupiedSeats('r459',TODAY,13,2,remaining).has(2))});
+test('editing a reservation preserves its identifier and releases old seats on success',()=>{
+ const original=make().booking;
+ const updated=updateBooking([original],original,request({seatIds:[4,3]}),TODAY);
+ assert.equal(updated.error,null);
+ assert.equal(updated.bookings.length,1);
+ assert.equal(updated.booking.id,original.id);
+ assert.equal(updated.booking.createdAt,original.createdAt);
+ assert.deepEqual(updated.booking.seatIds,[3,4]);
+ assert.ok(make(updated.bookings).booking);
+ assert.equal(updateBooking([original],original,request(),TODAY).error,null);
+});
+test('a conflicting, cancelled or stale edit cannot replace the saved reservation',()=>{
+ const original=make().booking;
+ const bookings=make([original],{seatIds:[4]}).bookings;
+ const conflict=updateBooking(bookings,original,request({seatIds:[4]}),TODAY);
+ assert.ok(conflict.error.seats);
+ assert.equal(conflict.bookings,bookings);
+ const newer=updateBooking(bookings,original,request({start:15}),TODAY);
+ assert.ok(updateBooking(newer.bookings,original,request({seatIds:[3]}),TODAY).error.booking);
+ assert.ok(updateBooking(cancelBooking(bookings,original.id),original,request(),TODAY).error.booking);
+});
 test('persistence round-trip and expiry filtering',()=>{const s=storage();const a=make();assert.equal(saveBookings(s,a.bookings).error,null);assert.deepEqual(loadBookings(s,TODAY).bookings,a.bookings);assert.equal(loadBookings(s,'2026-10-30').bookings.length,0)});
 test('corrupt schema, forged totals, duplicate records and overlaps rejected',()=>{const b=make().booking;for(const raw of ['bad','[]','{}','null',JSON.stringify({version:1,bookings:[{...b,total:1}]}),JSON.stringify({version:1,bookings:[b,b]}),JSON.stringify({version:1,bookings:[b,{...b,id:crypto.randomUUID()}]})]){const r=loadBookings(storage(raw),TODAY);assert.ok(r.error);assert.equal(r.bookings.length,0)}});
 test('blocked or missing storage returns a clear error and no mutation',()=>{const s={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}};assert.ok(loadBookings(s,TODAY).error);assert.ok(saveBookings(s,[]).error);assert.ok(loadBookings(null,TODAY).error)});

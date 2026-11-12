@@ -1,7 +1,8 @@
-import {demoClasses, nextClass, routeLink} from './campus-days-model.js';
+import {demoClasses, nextClass, routeLink} from './campus-days-model.js?v=20261112-polish';
+import {buildingDirectionsLink} from './campus-buildings.js?v=20261112-polish';
 import {loadBookings, todayMoscow} from './model.js';
 import {pilotRoomById, pilotDisplayNumber} from './pilot-spaces.js';
-import {readSchedule,SCHEDULE_STORAGE_KEY} from './local-schedule.js';
+import {readSchedule,SCHEDULE_STORAGE_KEY} from './local-schedule.js?v=20261112-polish';
 import {escapeHTML as e} from './email-template.js';
 
 const $ = id => document.getElementById(id);
@@ -20,12 +21,16 @@ function renderSchedule(){
     const place=item.status==='moved'?`Вместо аудитории ${item.previousRoom} → аудитория ${item.room}`:item.room?`Аудитория ${item.room}`:'';
     const address=item.address||(localSchedule===null?'Вознесенский пр., 44–46':'');
     const label={moved:'Перенос',cancelled:'Отменено',scheduled:'По расписанию'}[item.status];
+    const city=item.building&&item.status!=='cancelled'
+      ?buildingDirectionsLink(location.href,item.building,item.destination?item.room:undefined)
+      :null;
     return `<article class="card ${next?.id===item.id?'card-next':''}">
       <div class="card-time">${item.start}<span>до ${item.end}</span></div>
       <div class="card-body"><div class="card-top"><span class="pill ${item.status}">${label}</span>${next?.id===item.id?'<span class="next-label">Ближайшее</span>':''}</div>
       <h3>${e(item.title)}</h3>${place||address?`<p>${[place,address].filter(Boolean).map(e).join('<br>')}</p>`:''}
-      ${item.destination?`<a class="text-link" href="${e(routeLink(location.href,item.destination))}">Маршрут от входа →</a>`:''}
-      ${item.building&&item.status!=='cancelled'?`<a class="text-link" href="./buildings.html?to=${e(item.building)}">Маршрут до корпуса →</a>`:''}
+      ${item.destination?`<a class="text-link" href="${e(routeLink(location.href,item.destination))}">От входа до аудитории →</a>`:''}
+      ${city?`<a class="text-link" href="${e(city.href)}">${item.destination?'До корпуса и дальше до аудитории':'Маршрут до корпуса'} →</a>`:''}
+      ${city&&item.room&&!item.destination?'<p>Положение аудитории на карте пока не подтверждено.</p>':''}
       </div></article>`;
   }).join('');
 }

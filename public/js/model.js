@@ -43,6 +43,22 @@ export function createBooking(bookings,request,today=todayMoscow()){
   const booking={id:crypto.randomUUID(),roomId,seatIds:[...seatIds].sort((a,b)=>a-b),date,start,hours,total:roomById(roomId).price*hours*seatIds.length,createdAt:new Date().toISOString()};
   return {error:null,booking,bookings:[...bookings,booking]};
 }
+export function updateBooking(bookings,original,changes,today=todayMoscow()){
+  const saved=bookings.find(booking=>booking.id===original.id);
+  if(!saved)return {error:{booking:'Бронь уже отменена или истекла.'},bookings};
+  if(saved.roomId!==original.roomId||saved.date!==original.date||saved.start!==original.start||saved.hours!==original.hours
+    ||saved.seatIds.length!==original.seatIds.length||saved.seatIds.some((seat,i)=>seat!==original.seatIds[i])){
+    return {error:{booking:'Бронь изменилась в другой вкладке. Откройте её заново.'},bookings};
+  }
+  const {date,start,hours,seatIds}=changes;
+  const request={roomId:saved.roomId,date,start,hours,seatIds};
+  const others=bookings.filter(booking=>booking.id!==saved.id);
+  const error=validateRequest(request,others,today);
+  if(Object.keys(error).length)return {error,bookings};
+  const booking={...saved,date,start:Number(start),hours:Number(hours),seatIds:[...seatIds].sort((a,b)=>a-b),
+    total:roomById(saved.roomId).price*Number(hours)*seatIds.length};
+  return {error:null,booking,bookings:bookings.map(row=>row.id===booking.id?booking:row)};
+}
 export const cancelBooking=(bookings,id)=>bookings.filter(b=>b.id!==id);
 export function filterRooms({category='all',maxPrice=Infinity,query='',freeOnly=false}={},bookings=[],slot={},seeded=true){
   const q=String(query).trim().toLocaleLowerCase('ru');

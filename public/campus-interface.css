@@ -266,3 +266,135 @@ body.campus-page.about-page {--accent: var(--campus-accent); --support-line: var
 .campus-page .feedback-intro .lead, .campus-page .feedback-address {color: var(--muted);}
 .campus-page .feedback-card {background: #fff; border: 1px solid var(--line); border-radius: 20px;}
 .campus-page .feedback-service, .campus-page .feedback-service a {color: var(--muted);}
+
+/* A quieter tool layer keeps the building and the current task in focus. */
+:root {
+  --campus-ink: #182332;
+  --campus-muted: #596778;
+  --campus-accent: #24558f;
+  --campus-active: #eaf0f7;
+  --campus-line: #dbe2e9;
+  --campus-shadow: 0 12px 32px #23374e16, 0 2px 6px #23374e0c;
+}
+.nav-header {gap: clamp(18px, 2.5vw, 38px);}
+.nav-brand {letter-spacing: -.055em;}
+.nav-brand small {font-size: 10px; letter-spacing: .005em;}
+.nav-search, .nav-search:hover, .nav-search:focus-within {
+  border-radius: 13px;
+  background: #f3f5f7;
+  border-color: #e7ebef;
+}
+.nav-search:hover {background: #edf1f5;}
+.nav-search:focus-within {background: #fff; outline: 2px solid #5482b3; outline-offset: 2px;}
+.nav-search .nav-icon {color: #718195;}
+.nav-header nav .nav-main-links a, .nav-header nav button {border-radius: 10px;}
+.nav-header nav .nav-menu-toggle {border-radius: 12px;}
+.nav-project-menu {padding: 8px; box-shadow: 0 18px 48px #243b5630, 0 2px 8px #243b5610;}
+.nav-project-menu a, .nav-project-menu button {border-radius: 10px;}
+.nav-app {margin-inline: 16px;}
+.nav-map-area {border-color: #e0e5e8; background: linear-gradient(145deg, #f6f8f9, #edf1f4 58%, #e5ebf0);}
+.nav-hero {top: clamp(30px, 5vh, 54px); left: clamp(26px, 3.5vw, 56px);}
+.nav-campus-name {margin-bottom: 16px; color: #617489; font-size: 11px; font-weight: 600; letter-spacing: .025em;}
+.nav-hero h1 {margin-bottom: 14px; font-size: clamp(38px, 3.7vw, 56px); font-weight: 600; line-height: 1.02; letter-spacing: -.055em;}
+.nav-hero p {max-width: 260px; margin-bottom: 22px; font-size: 14px; line-height: 1.55;}
+.nav-hero-actions {gap: 8px;}
+.nav-hero .nav-btn-primary, .nav-hero .nav-text-btn {min-height: 44px; padding-inline: 16px; font-weight: 550;}
+.nav-hero .nav-text-btn {background: #ffffffe0; border-color: #d9e1e8;}
+.nav-hero .nav-btn-primary:hover, .nav-btn-primary:hover:not(:disabled) {background: #193f70;}
+.nav-levels, .nav-map-zoom, .nav-floor-source {
+  background: #ffffffed;
+  border-color: #ffffffc9;
+  box-shadow: 0 8px 24px #253a4e18, 0 1px 4px #253a4e12;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.nav-levels {padding: 4px; border-radius: 16px;}
+.nav-levels button {border-radius: 11px;}
+.nav-levels button[aria-pressed=true], .nav-map-zoom button[aria-pressed=true] {background: #e8eef5; color: var(--campus-accent);}
+.nav-map-zoom {padding: 4px; border-radius: 14px;}
+.nav-floor-source {border-radius: 12px;}
+.nav-sidebar, .nav-detail, .nav-route, .nav-modal {
+  background: #fff;
+  border-color: #e0e5eb;
+  box-shadow: 0 18px 50px #23374e24, 0 2px 8px #23374e10;
+}
+.nav-sidebar h2, .nav-detail h2, .nav-route h2, .nav-modal h2 {letter-spacing: -.035em;}
+.nav-sidebar h2, .nav-route h2, .nav-modal h2 {font-weight: 600;}
+.nav-modes {gap: 3px; padding: 4px; background: #f1f4f6; border-radius: 12px;}
+.nav-modes button {color: #596778; border-radius: 9px;}
+.nav-modes button[aria-pressed=true] {color: #224e80; box-shadow: 0 1px 3px #24374a1e;}
+.nav-result {border-radius: 10px;}
+.nav-result:hover, .nav-result[aria-pressed=true] {background: #edf2f6;}
+.nav-result-code {color: #284e75;}
+.nav-detail .nav-room-title {font-weight: 550;}
+.nav-equipment span {background: #f1f4f6; color: #536373;}
+.nav-close, .nav-sidebar-close, .nav-modal-close {background: #f1f4f6; color: #596778;}
+.nav-route ol {gap: 5px;}
+.nav-route ol > li {border-color: #e5e9ed; border-radius: 12px;}
+.nav-step-number {background: #eaf0f5; color: #315c86;}
+.nav-route .nav-journey {background: #f7f9fa;}
+.nav-seat-grid {background: #f1f3f4;}
+.nav-btn {border-radius: 10px;}
+.nav-btn:disabled {opacity: .5; cursor: not-allowed;}
+.nav-footer {font-size: 11px;}
+.nav-map:focus-visible, .nav-header :focus-visible, .nav-project-menu :focus-visible,
+.nav-app button:focus-visible, .nav-app a:focus-visible, .nav-modal :focus-visible {
+  outline: 3px solid #4f80b8;
+  outline-offset: 2px;
+}
+.nav-search:focus-within input:focus-visible {outline: 0;}
+
+/* Reading pages share the same restrained controls and surfaces. */
+.campus-page {background: #f6f8fa;}
+.campus-page .header, .campus-page .top {border-color: #e4e9ed;}
+.campus-page .page h1, .campus-page .intro h1,
+.campus-page .about-main > h1, .campus-page .feedback-intro > h1 {font-weight: 600; letter-spacing: -.05em;}
+.campus-page .card, .campus-page .booking-row, .campus-page .empty,
+.campus-page .panel, .campus-page .feedback-card, .campus-page .about-main {border-color: #e0e6eb;}
+.campus-page .card-time, .campus-page .pill:not(.moved,.cancelled),
+.campus-page .notice, .campus-page .explore, .campus-page .share-box {background: #ebf1f5;}
+.campus-page .button, .campus-page .primary {border-radius: 11px;}
+.campus-page .button:hover, .campus-page .primary:hover {background: #193f70; border-color: #193f70;}
+.campus-page input:focus-visible, .campus-page select:focus-visible,
+.campus-page button:focus-visible, .campus-page a:focus-visible {outline-color: #4f80b8;}
+
+@media (max-width: 700px) {
+  .nav-header {gap: 4px 12px;}
+  .nav-brand {font-size: 28px;}
+  .nav-search, .nav-search:focus-within {border-radius: 12px;}
+  .nav-app {margin-inline: 8px;}
+  .nav-map-area {border-radius: 19px;}
+  .nav-hero {top: 20px; left: 17px;}
+  .nav-hero h1, .nav-app.is-open-model .nav-hero h1 {font-size: clamp(28px, 8.5vw, 38px); line-height: 1.04;}
+  .nav-hero p {max-width: 225px; font-size: 12px;}
+  .nav-hero .nav-btn-primary, .nav-hero .nav-text-btn {font-size: 12px;}
+  .nav-levels {padding: 4px;}
+  .nav-sidebar, .nav-detail, .nav-route {border-radius: 18px 18px 0 0;}
+  .nav-map-zoom button {width: 40px; height: 40px;}
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-search, .nav-btn, .nav-result, .nav-levels button, .nav-map-zoom button {transition: none;}
+}
+
+/* Route progress and booking actions use the same compact control language. */
+.nav-route-guide {margin: 14px 0; padding: 14px; border: 1px solid #dce5ed; border-radius: 14px; background: #f5f8fa;}
+.nav-route-guide-current {display: block; color: var(--campus-accent); font-size: 12px; font-weight: 650; line-height: 1.4;}
+.nav-route-guide p {margin: 6px 0 0; color: var(--ink); font-size: 14px; font-weight: 400; line-height: 1.5;}
+.nav-route-guide-actions, .nav-record-actions {display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;}
+.nav-route-guide-actions .nav-btn, .nav-record-actions .nav-btn, .nav-room-share {min-height: 40px;}
+.nav-route-guide-actions .nav-btn {flex: 1; padding-inline: 10px; line-height: 1.3;}
+.nav-guide-stair {min-height: 38px; margin-top: 4px; padding: 4px 0; color: var(--campus-accent); text-align: left;}
+.nav-record-actions .nav-btn {white-space: normal;}
+.nav-edit-booking {margin: 10px 0; color: var(--campus-accent); font-weight: 600;}
+@media (max-width: 700px) {
+  .nav-route-guide-actions .nav-btn, .nav-record-actions .nav-btn, .nav-room-share {min-height: 44px;}
+  .nav-guide-stair {min-height: 44px;}
+}
+@media (max-width: 700px) {
+  .nav-modes {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));}
+  .nav-modes button {width: 100%;}
+}
+@media (max-width: 360px) {
+  .nav-hero-actions {gap: 6px;}
+  .nav-hero .nav-btn-primary, .nav-hero .nav-text-btn {padding-inline: 10px; font-size: 11px;}
+}

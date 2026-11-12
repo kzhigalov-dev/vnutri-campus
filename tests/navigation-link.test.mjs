@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createRouteLink, createServiceLink, createStartLink, readNavigationLink} from '../public/js/navigation-link.js';
+import {createRouteLink, createServiceLink, createSpaceLink, createStartLink, readNavigationLink} from '../public/js/navigation-link.js';
 
 const base = 'https://example.test/vnutri-campus/index.html?room=old#floor-2';
 
@@ -32,6 +32,15 @@ test('a start link is reusable without sharing a destination', () => {
   assert.equal(start.href, 'https://example.test/vnutri-campus/index.html?start=f2-s4');
   assert.equal(readNavigationLink(start, 'start-1').origin, 'f2-s4');
   assert.equal(readNavigationLink(start, 'start-1').target, null);
+});
+
+test('a room link retains the Pages path and shares only the selected room', () => {
+  const url = createSpaceLink(createRouteLink(base, 'start-2', 'f4-s2', {stepFree:true,mapPreview:true}), 'П4.08');
+  assert.equal(url.pathname, '/vnutri-campus/index.html');
+  assert.equal(url.search, '');
+  assert.deepEqual(readNavigationLink(url, 'start-1'), {
+    origin: 'start-1', target: null, roomId: null, spaceId: 'П4.08',
+  });
 });
 
 test('invalid explicit route parameters stay distinguishable from absent values', () => {

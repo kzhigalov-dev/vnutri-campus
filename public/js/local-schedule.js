@@ -1,5 +1,4 @@
-import {roomPlacements} from './room-placements.js';
-import {buildingById} from './campus-buildings.js';
+import {buildingById,mappedBuildingRoom} from './campus-buildings.js?v=20261112-polish';
 
 export const SCHEDULE_STORAGE_KEY='vnutri.schedule.v1';
 const time=/^(?:[01]\d|2[0-3]):[0-5]\d$/;
@@ -19,8 +18,8 @@ export function readSchedule(source){
   if(!Number.isFinite(+day)||day.toISOString().slice(0,10)!==date)throw error();
   if(!title||typeof start!=='string'||typeof end!=='string'||!time.test(start)||!time.test(end)||start>=end||!statuses.has(status))throw error();
   if(status==='moved'&&(!room||!previousRoom||room===previousRoom))throw error();
-  const building=buildingById(row.building),onMap=building?.id==='voznesensky';
-  const placement=onMap?roomPlacements.find(entry=>entry.number===room):null;
+  const building=buildingById(row.building);
+  const placement=mappedBuildingRoom(building?.id,room);
   return {
    id:`local-${index}`,date,start,end,status,title,room,previousRoom,building:building?.id??'',
    address:building?.address??clean(row.address,200),
