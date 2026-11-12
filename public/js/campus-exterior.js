@@ -5,15 +5,14 @@ import {toWorld} from './geometry.js';
 // front is the long, straight edge opposite the three courtyard wings.
 // References: sutd.ru/universitet/gallery/1743/618/ (official elevation photo),
 // Commons «Вознесенский 44-46 01/02/04.jpg» (E. Borisova, 2020/2025).
-export function createCampusExterior({campus,box,material,track,textures,depthScale=2.2}) {
+export function createCampusExterior({campus,box,material,track,textures,depthScale=2.2,entranceX}) {
  const ref=campus.floors.get(4),points=ref.source.footprint.map(p=>{const [x,z]=toWorld(ref.source,...p);return [x+ref.offset[0],(z+ref.offset[1])*depthScale];});
  const minX=Math.min(...points.map(p=>p[0])),maxX=Math.max(...points.map(p=>p[0])),minZ=Math.min(...points.map(p=>p[1])),maxZ=Math.max(...points.map(p=>p[1]));
  const streetEdges=points.map((p,i)=>[p,points[(i+1)%points.length]]).filter(([a,b])=>Math.abs(a[1]-b[1])<.2).sort((a,b)=>Math.abs(b[1][0]-b[0][0])-Math.abs(a[1][0]-a[0][0]));
  const street=streetEdges[0],streetLeft=Math.min(street[0][0],street[1][0]),streetRight=Math.max(street[0][0],street[1][0]),streetZ=(street[0][1]+street[1][1])/2;
  const width=streetRight-streetLeft;
  const glazedBays=[.29,.73].map(fraction=>streetLeft+width*fraction);
- // From the avenue, the canopy sits beneath the bay nearest the bevelled corner.
- const entryX=glazedBays[1];
+ const entryX=entranceX??(streetLeft+streetRight)/2;
  const stone=material({color:0xc9c8bb,roughness:.9}),stoneLight=material({color:0xe0ddd0,roughness:.82}),joints=material({color:0xaaa99d,roughness:1}),base=material({color:0x454c4c,roughness:.87}),frame=material({color:0x4f554f,metalness:.28,roughness:.48}),glass=material({color:0x608087,metalness:.28,roughness:.3}),lit=material({color:0xc4b88e,emissive:0xa88b51,emissiveIntensity:.22,roughness:.5}),roofMat=material({color:0x59635e,metalness:.4,roughness:.7}),copper=material({color:0x6f8e80,metalness:.55,roughness:.7}),paving=material({color:0xb6b8b1,roughness:1}),asphalt=material({color:0x65717b,roughness:1}),batches=new Map();
  const facades=new Map(),roof=new THREE.Group(),site=new THREE.Group();roof.userData.floor=5;
  function b(parent,mat,x,y,z,w,h,d,angle=0){let batch=batches.get(parent);if(!batch){batch=new Map();batches.set(parent,batch);}if(!batch.has(mat))batch.set(mat,[]);batch.get(mat).push({x,y,z,w,h,d,angle});}

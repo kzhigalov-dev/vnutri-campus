@@ -119,7 +119,22 @@ body:has(.nav-app) {
 .nav-entrance-marker {
   position: absolute;
   z-index: 3;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  pointer-events: auto;
+}
+.nav-entrance-marker[hidden] {display: none;}
+.nav-entrance-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, 6px);
+  visibility: hidden;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -130,15 +145,14 @@ body:has(.nav-app) {
   background: var(--campus-accent);
   color: #fff;
   box-shadow: 0 4px 14px #122e6560;
-  pointer-events: auto;
+  pointer-events: none;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
-.nav-entrance-marker[hidden] {display: none;}
-.nav-entrance-marker::before {content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff;}
-.nav-entrance-marker::after {content: ''; position: absolute; top: -7px; left: calc(50% - 5px); border: 5px solid transparent; border-top: 0; border-bottom-color: #fff;}
-.nav-entrance-marker:hover {background: #113ea4;}
+.nav-entrance-marker:hover .nav-entrance-label, .nav-entrance-marker:focus-visible .nav-entrance-label {visibility: visible;}
+.nav-entrance-label::before {content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff;}
+.nav-entrance-label::after {content: ''; position: absolute; top: -7px; left: calc(50% - 5px); border: 5px solid transparent; border-top: 0; border-bottom-color: #fff;}
 
 .nav-sidebar, .nav-detail, .nav-route, .nav-modal {border: 1px solid var(--line); border-radius: 21px;}
 .nav-detail h2, .nav-modal h2 {font-weight: 650;}

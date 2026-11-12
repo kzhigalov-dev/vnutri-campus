@@ -4,7 +4,7 @@ import {OrbitControls} from '../vendor/OrbitControls.js';
 import {createMotion} from './navigation-motion.js';
 import {toWorld} from './geometry.js';
 import {createMaquetteProps} from './maquette-props.js?v=20261106-floors1';
-import {createCampusExterior} from './campus-exterior.js?v=20261112-entrance';
+import {createCampusExterior} from './campus-exterior.js?v=20261112-centered-entry';
 import {visualWorld,roomBounds} from './maquette-layout.js?v=20261106-floors1';
 import {pilotRoomBySpace} from './pilot-spaces.js';
 import {createRoutePreview,sampleRoutePreview} from './route-preview.js?v=20261111-stairs';
@@ -92,11 +92,18 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  const decor=createMaquetteProps({campus,box,material,track:trackedGeometry,textures});
  for(const [n,f] of floorGroups){f.decor=decor.floors.get(n);f.group.add(f.decor);}
  for(const [id,root] of decor.roomShowcases){root.visible=false;root.position.y=30;scene.add(root);}
- const exterior=createCampusExterior({campus,box,material,track:trackedGeometry,textures,depthScale});
+ const routeStart=campus.entries.get('start-1');
+ // Use the same visual coordinates as the indoor route, including the first-floor rotation.
+ const entranceX=routeStart?.point?sceneWorld(routeStart.floor,routeStart.point)[0]:undefined;
+ const exterior=createCampusExterior({campus,box,material,track:trackedGeometry,textures,depthScale,entranceX});
  const entranceMarker=document.createElement('button');
  entranceMarker.type='button';
  entranceMarker.className='nav-entrance-marker';
- entranceMarker.textContent='Главный вход';
+ const entranceLabel=document.createElement('span');
+ entranceLabel.className='nav-entrance-label';
+ entranceLabel.textContent='Главный вход';
+ entranceLabel.setAttribute('aria-hidden','true');
+ entranceMarker.append(entranceLabel);
  entranceMarker.setAttribute('aria-label','Главный вход со стороны Вознесенского проспекта — открыть 1-й этаж');
  entranceMarker.hidden=true;
  entranceMarker.addEventListener('click',()=>onFloor(1));
