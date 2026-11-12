@@ -1,6 +1,7 @@
 import {prepareGalleryLayout} from './gallery-layout.js';
 import {createWalkMap,pointInPolygon} from './walk-navigation.js';
 import {toWorld} from './geometry.js';
+import {floorDisplay} from './maquette-layout.js?v=20261112-floor-fit';
 const length=points=>points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
 export function schematicFloor(source,spaces){const walls=[...source.footprint.map((p,i)=>[...p,...source.footprint[(i+1)%source.footprint.length],5]),...spaces.flatMap(r=>r.polygon.map((p,i)=>[...p,...r.polygon[(i+1)%r.polygon.length],5]))];return prepareGalleryLayout({...source,walls},spaces);}
 export function createCampusNavigator(geometry,spaceData,{stepFreeGraph=null}={}){
@@ -15,13 +16,17 @@ export function createCampusNavigator(geometry,spaceData,{stepFreeGraph=null}={}
  }
  const entrance=geometry.mainEntrance,mainStair=entrance&&floors.get(entrance.floor)?.landings.find(l=>l.index===entrance.stairIndex);
  if(mainStair){mainStair.isMain=true;mainStair.label=entrance.label;const start=entries.get(`start-${entrance.floor}`);if(start){start.point=[...mainStair.point];start.label=entrance.label+' · '+entrance.floor+'-й этаж';start.departureStairId=mainStair.id;}}
+ const reference=floors.get(ref.floor);
  for(let floor=1;floor<5;floor++){
   const a=floors.get(floor),b=floors.get(floor+1);if(!a||!b)continue;
   const panelA=a.source.sourceKind==='wayfinding-panel',panelB=b.source.sourceKind==='wayfinding-panel';
   const registration=(geometry.stairRegistrations||[]).find(r=>r.fromFloor===floor&&r.toFloor===floor+1&&r.illustrative===true);
   const mixed=panelA!==panelB,candidates=[];
+  const placedA=mixed?floorDisplay(a,reference,1):null,placedB=mixed?floorDisplay(b,reference,1):null;
   for(const x of a.landings)for(const y of b.landings){
-   const d=Math.hypot(x.center[0]+a.offset[0]-y.center[0]-b.offset[0],x.center[1]+a.offset[1]-y.center[1]-b.offset[1]);
+   const [ax,az]=placedA?placedA.point(x.center).filter((_,index)=>index!==1):x.center.map((value,index)=>value+a.offset[index]);
+   const [bx,bz]=placedB?placedB.point(y.center).filter((_,index)=>index!==1):y.center.map((value,index)=>value+b.offset[index]);
+   const d=Math.hypot(ax-bx,az-bz);
    if(panelA&&panelB){if(!x.number||x.number!==y.number)continue;candidates.push({x,y,d,registration:'panel-number',illustrative:d>2.5});}
    else if(mixed){const panel=panelA?x:y;if(!registration||!registration.allowedPanelNumbers?.includes(panel.number))continue;const pairs=registration.pairs||[],pinned=pairs.some(p=>p.fromIndex===x.index&&p.toNumber===y.number);if(!pinned&&pairs.some(p=>p.fromIndex===x.index||p.toNumber===y.number))continue;candidates.push({x,y,d,pinned,registration:'archive-panel',illustrative:true});}
    else if(d<=2.5)candidates.push({x,y,d,registration:'aligned-archive',illustrative:false});
@@ -55,7 +60,7 @@ export function createCampusNavigator(geometry,spaceData,{stepFreeGraph=null}={}
   const graph=new Map(nodes);graph.set('__from',from);graph.set('__to',to);const dist=new Map([['__from',0]]),prev=new Map(),visited=new Set();
   while(true){let current=null,best=Infinity;for(const [id,d] of dist)if(!visited.has(id)&&d<best){best=d;current=id;}if(!current)break;if(current==='__to')break;visited.add(current);const a=graph.get(current),edges=[];
    for(const [id,b] of graph){if(id===current||id==='__from'||a.floor!==b.floor)continue;const path=local(a,b);if(path)edges.push({to:id,cost:length(path),path,floor:a.floor});}
-   for(const edge of vertical.get(current)||[]){if(closed.has(edge.id))continue;if(from.departureStairId&&a.floor===from.floor&&current!==from.departureStairId)continue;edges.push({...edge,connection:{id:edge.id,fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index,stairNumber:a.number??graph.get(edge.to).number,registration:edge.registration,illustrative:edge.illustrative}});}
+   for(const edge of vertical.get(current)||[]){if(closed.has(edge.id))continue;if(from.departureStairId&&a.floor===from.floor&&current!==from.departureStairId)continue;edges.push({...edge,connection:{id:edge.id,fromFloor:a.floor,toFloor:graph.get(edge.to).floor,from:a.point,to:graph.get(edge.to).point,stair:a.index,toStair:graph.get(edge.to).index,stairNumber:a.number??graph.get(edge.to).number,registration:edge.registration,illustrative:edge.illustrative}});}
    for(const edge of edges){const next=best+edge.cost;if(next<(dist.get(edge.to)??Infinity)){dist.set(edge.to,next);prev.set(edge.to,{id:current,edge});}}
   }
   if(!prev.has('__to'))return null;const edges=[];for(let id='__to';id!=='__from';){const previous=prev.get(id);if(!previous)return null;edges.push(previous.edge);id=previous.id;}edges.reverse();

@@ -1,5 +1,5 @@
-import {createCampusNavigator} from './campus-navigation.js';
-import {mapLinks,readMapState,saveMapSnapshot,restoreMapSnapshot,validateClosures} from './map-preview.js';
+import {createCampusNavigator} from './campus-navigation.js?v=20261112-floor-fit';
+import {mapLinks,readMapState,saveMapSnapshot,restoreMapSnapshot,validateClosures} from './map-preview.js?v=20261112-floor-fit';
 
 const $=id=>document.getElementById(id);
 const status=message=>{$('status').textContent=message;};

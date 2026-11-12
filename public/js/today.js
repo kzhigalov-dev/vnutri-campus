@@ -2,21 +2,32 @@ import {demoClasses, nextClass, routeLink} from './campus-days-model.js?v=202611
 import {buildingDirectionsLink} from './campus-buildings.js?v=20261112-polish';
 import {loadBookings, todayMoscow} from './model.js';
 import {pilotRoomById, pilotDisplayNumber} from './pilot-spaces.js';
-import {readSchedule,SCHEDULE_STORAGE_KEY} from './local-schedule.js?v=20261112-polish';
+import {readSchedule,readScheduleFile,scheduleDays,SCHEDULE_STORAGE_KEY} from './local-schedule.js?v=20261112-schedule';
 import {escapeHTML as e} from './email-template.js';
 
 const $ = id => document.getElementById(id);
-const now = new Date();
-const today = todayMoscow(now);
-$('today-date').textContent = new Intl.DateTimeFormat('ru-RU', {timeZone:'Europe/Moscow', weekday:'long', day:'numeric', month:'long'}).format(now).toLocaleUpperCase('ru-RU');
-let localSchedule=null,fileRevision=0;
-const status=$('schedule-status'),reset=$('schedule-reset');
+const dateLabel=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const formatDay=date=>dateLabel.format(new Date(date+'T12:00:00Z'));
+let localSchedule=null,fileRevision=0,selectedDay=null;
+const status=$('schedule-status'),reset=$('schedule-reset'),daySelect=$('schedule-day');
 function renderSchedule(){
-  const classes=localSchedule===null?demoClasses:localSchedule.filter(item=>item.date===today).sort((a,b)=>a.start.localeCompare(b.start));
-  const next=nextClass(classes,now);
-  $('schedule-title').textContent=localSchedule===null?'Пример дня':'Моё расписание';
-  reset.hidden=localSchedule===null;
-  $('next-status').textContent=next?'Ближайшее неотменённое занятие выделено ниже.':classes.length?'На сегодня занятий больше нет.':'На сегодня занятий в файле нет.';
+  const now=new Date(),today=todayMoscow(now),imported=localSchedule!==null;
+  const days=scheduleDays(localSchedule??[],today);
+  const day=imported&&days.dates.includes(selectedDay)?selectedDay:days.initial;
+  const classes=imported?localSchedule.filter(item=>item.date===day).sort((a,b)=>a.start.localeCompare(b.start)):demoClasses;
+  const next=day===today?nextClass(classes,now):null;
+  $('today-date').textContent=formatDay(day).toLocaleUpperCase('ru-RU');
+  $('schedule-title').textContent=imported?'Моё расписание':'Пример дня';
+  $('schedule-demo').hidden=imported;
+  reset.hidden=!imported;
+  $('schedule-day-control').hidden=!imported;
+  if(imported){
+    daySelect.replaceChildren(...days.dates.map(date=>new Option(date===today?`Сегодня · ${formatDay(date)}`:formatDay(date),date)));
+    daySelect.value=day;
+  }
+  $('next-status').textContent=next?'Ближайшее занятие выделено ниже.'
+    :!classes.length?(localSchedule?.length?'На выбранную дату занятий в файле нет.':'В файле нет занятий.')
+    :day===today?'На сегодня больше нет неотменённых занятий.':day===days.initial&&!selectedDay?`На сегодня занятий в файле нет. Показано расписание на ${formatDay(day)}.`:'Занятия на выбранную дату.';
   $('class-list').innerHTML=classes.map(item=>{
     const place=item.status==='moved'?`Вместо аудитории ${item.previousRoom} → аудитория ${item.room}`:item.room?`Аудитория ${item.room}`:'';
     const address=item.address||(localSchedule===null?'Вознесенский пр., 44–46':'');
@@ -32,7 +43,7 @@ function renderSchedule(){
       ${city?`<a class="text-link" href="${e(city.href)}">${item.destination?'До корпуса и дальше до аудитории':'Маршрут до корпуса'} →</a>`:''}
       ${city&&item.room&&!item.destination?'<p>Положение аудитории на карте пока не подтверждено.</p>':''}
       </div></article>`;
-  }).join('');
+  }).join('')||'<p class="empty">Выберите другую дату или загрузите файл с занятиями.</p>';
 }
 try{
   const saved=localStorage.getItem(SCHEDULE_STORAGE_KEY);
@@ -41,36 +52,48 @@ try{
   status.textContent='Не удалось прочитать сохранённое расписание. Загрузите файл повторно.';
 }
 renderSchedule();
+daySelect.addEventListener('change',()=>{
+  selectedDay=daySelect.value;
+  renderSchedule();
+});
 $('schedule-file').addEventListener('change',async event=>{
-  const revision=++fileRevision,input=event.currentTarget,file=input.files[0];
+  const input=event.currentTarget,file=input.files[0];
   if(!file)return;
+  const revision=++fileRevision;
+  status.textContent='Читаем файл…';
   try{
-    if(file.size>256000)throw new Error('Файл слишком большой. Максимум 256 КБ.');
-    const rows=readSchedule(await file.text());
+    const rows=await readScheduleFile(file);
     if(revision!==fileRevision)return;
-    localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(rows));
     localSchedule=rows;
-    status.textContent='Расписание сохранено в этом браузере.';
+    selectedDay=null;
+    try{
+      localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(rows));
+      status.textContent=`Загружено занятий: ${rows.length}. Расписание сохранено в этом браузере.`;
+    }catch{
+      status.textContent=`Загружено занятий: ${rows.length}. Хранилище недоступно, поэтому расписание открыто до перезагрузки страницы.`;
+    }
     renderSchedule();
   }catch(error){
-    if(revision===fileRevision)status.textContent=error instanceof SyntaxError?'Не удалось прочитать JSON. Сверьте формат с примером.':error.message;
+    if(revision===fileRevision)status.textContent=error.message;
   }finally{
     if(revision===fileRevision)input.value='';
   }
 });
 reset.addEventListener('click',()=>{
   fileRevision++;
+  localSchedule=null;
+  selectedDay=null;
+  $('schedule-file').value='';
   try{
     localStorage.removeItem(SCHEDULE_STORAGE_KEY);
-    localSchedule=null;
-    $('schedule-file').value='';
     status.textContent='Загруженное расписание удалено.';
-    renderSchedule();
   }catch{
-    status.textContent='Не удалось удалить расписание из хранилища браузера.';
+    status.textContent='Расписание закрыто. Браузер не разрешил удалить сохранённую копию.';
   }
+  renderSchedule();
 });
 
+const today=todayMoscow();
 const result = loadBookings({getItem: key => localStorage.getItem(key)}, today);
 const bookings = result.bookings.filter(item => item.date === today).sort((a, b) => a.start - b.start);
 if (result.error) $('booking-list').textContent = result.error;

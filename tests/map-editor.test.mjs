@@ -33,3 +33,12 @@ test('missing, corrupt, and inaccessible preview states fall back with a visible
  db.setItem(MAP_STORAGE_KEY,'not json');const corrupt=loadMapClosures(campus,{storage:db,search:'?map=preview'});assert.equal(corrupt.mode,'public');assert.ok(corrupt.error);assert.throws(()=>readMapState(db,campus));
  const denied={getItem(){throw new Error('denied')}};assert.ok(loadMapClosures(campus,{storage:denied,search:'?map=preview'}).error);
 });
+test('a stored closure follows the same numbered stair after archive registration changes',()=>{
+ const db=storage(),old='stairs-4-0|stairs-5-1';
+ db.setItem(MAP_STORAGE_KEY,JSON.stringify({version:1,currentId:'old',snapshots:[{
+  id:'old',createdAt:'2026-11-12T09:00:00Z',closures:[{linkId:old,reason:'Работы'}],
+ }]}));
+ const loaded=loadMapClosures(campus,{storage:db,search:'?map=preview'});
+ assert.equal(loaded.error,null);
+ assert.deepEqual(loaded.closures,[{linkId:'stairs-4-0|stairs-5-2',reason:'Работы'}]);
+});

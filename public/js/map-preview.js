@@ -2,6 +2,14 @@ import {campusClosures} from './campus-closures.js';
 
 export const MAP_STORAGE_KEY='vnutri.map-preview.v1';
 const zonedDate=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+// Older drafts used different archive endpoints for the same panel staircase.
+const revisedArchiveLinks=new Map([
+ ['stairs-1-3|stairs-2-0','stairs-1-4|stairs-2-0'],
+ ['stairs-1-4|stairs-2-4','stairs-1-3|stairs-2-4'],
+ ['stairs-4-0|stairs-5-1','stairs-4-0|stairs-5-2'],
+ ['stairs-4-1|stairs-5-2','stairs-4-1|stairs-5-1'],
+ ['stairs-4-3|stairs-5-0',null],
+]);
 
 // The graph exposes each stair connection twice, once in each direction.
 export function mapLinks(navigator){
@@ -42,10 +50,18 @@ export function readMapState(storage,navigator){
  const state=JSON.parse(raw);
  if(!state||state.version!==1||!Array.isArray(state.snapshots)||typeof state.currentId!=='string')throw new Error('История версий повреждена.');
  const seen=new Set();
+ const ids=new Set(navigator.links.map(link=>link.id));
  const snapshots=state.snapshots.map(snapshot=>{
   if(!snapshot||typeof snapshot.id!=='string'||!snapshot.id||seen.has(snapshot.id)||typeof snapshot.createdAt!=='string'||!Number.isFinite(Date.parse(snapshot.createdAt)))throw new Error('История версий повреждена.');
   seen.add(snapshot.id);
-  return {id:snapshot.id,createdAt:snapshot.createdAt,closures:validateClosures(snapshot.closures,navigator)};
+  if(!Array.isArray(snapshot.closures))throw new Error('Список закрытий повреждён.');
+  const closures=snapshot.closures.flatMap(closure=>{
+   const id=closure?.linkId;
+   if(ids.has(id)||!revisedArchiveLinks.has(id))return [closure];
+   const updated=revisedArchiveLinks.get(id);
+   return updated===null?[]:[{...closure,linkId:updated}];
+  });
+  return {id:snapshot.id,createdAt:snapshot.createdAt,closures:validateClosures(closures,navigator)};
  });
  if(!seen.has(state.currentId))throw new Error('Текущая версия не найдена.');
  return {version:1,currentId:state.currentId,snapshots};

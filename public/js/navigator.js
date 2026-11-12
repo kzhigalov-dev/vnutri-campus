@@ -1,11 +1,11 @@
 import {seatLayout} from './maquette-layout.js?v=20261030-11';
 import {applyRoomPlacements,roomEvidence,roomPlacements} from './room-placements.js';
-import {createCampusNavigator} from './campus-navigation.js?v=20261112-visit';
-import {loadMapClosures} from './map-preview.js';
+import {createCampusNavigator} from './campus-navigation.js?v=20261112-floor-fit';
+import {loadMapClosures} from './map-preview.js?v=20261112-floor-fit';
 import {searchRoom} from './room-search.js';
 import {searchServices} from './service-search.js';
 import {parseWorkSearch,nextWorkHour} from './work-search.js';
-import {createNavigatorPlan} from './navigator-plan.js';
+import {createNavigatorPlan} from './navigator-plan.js?v=20261112-floor-fit';
 import {accessSources,floorSource,secondFloorDetour,fourthFloorSign} from './campus-evidence.js';
 import {createRouteLink,createServiceLink,createSpaceLink,createStartLink,readNavigationLink,writeRoutePreferences} from './navigation-link.js?v=20261112-guide';
 import {routeFloorInstruction} from './route-preview.js?v=20261112-visit';
@@ -69,7 +69,7 @@ function setLevel(number,animate=true,stairIndex=null){
  routeStairFocus=stairIndex;
  scene?.setOverviewMode?.(route?'spread':'building');
  app.classList.toggle('is-open-model',number>0);
- $('nav-stage-title').innerHTML=number?`${number} этаж`:'Вознесенский,<br>44–46';
+ $('nav-stage-title').innerHTML=number?`${number} этаж`:'Вознесенский, <br>44–46';
  $('nav-stage-subtitle').textContent=number?'Учебная схема этажа':'Аудитории, маршруты и места для работы.';
  $('nav-open-model').innerHTML=number?'Собрать здание':`Смотреть этажи ${icon('chevron')}`;
  if(!number){$('nav-projection').setAttribute('aria-pressed','false');$('nav-projection').querySelector('span').textContent='2D';$('nav-rotate').disabled=false;}
@@ -379,9 +379,9 @@ function updateStairPanel(){
   $('nav-stair-title').textContent=connection.stairNumber?`Лестница №${connection.stairNumber}`:'Лестница';
   $('nav-stair-direction').textContent=`${connection.fromFloor}-й этаж → ${connection.toFloor}-й этаж`;
   $('nav-stair-evidence').textContent=connection.registration==='archive-panel'
-   ?'Площадки сопоставлены между архивным планом и современной панелью.'
+   ?'Марши ориентированы по плану этажа. Площадки архивного плана и современной панели сопоставлены приблизительно.'
    :connection.registration==='panel-number'
-    ?'Площадки связаны по совпадающему номеру на панелях.'
+    ?'Марши ориентированы по плану этажа. Площадки связаны по номеру лестницы на панелях.'
     :'Положение площадок взято из схемы этажа.';
  }
 }
@@ -742,7 +742,7 @@ try{const load=async path=>{const r=await fetch(path);if(!r.ok)throw Error(path)
  const versionNote=$('nav-map-version');
  versionNote.hidden=!previewRequested;
  versionNote.textContent=mapRouting.error||'Предпросмотр локальной версии карты. Закрытия действуют только здесь.';
- try{const {createNavigatorScene}=await import('./navigator-scene.js?v=20261112-polish');scene=createNavigatorScene({container:$('campus-map'),campus,onSelect:select,onFloor:showMapFloor,onSeatSelect:(spaceId,seatId)=>{if(selected!==spaceId)select(spaceId);bookingOpen=true;const r=pilot();if(!r||slotErrors().length||pilotStatus(r,availabilityBookings(),slot()).occupied.has(seatId))return;chosen.has(seatId)?chosen.delete(seatId):chosen.add(seatId);renderDetail();$('nav-detail').querySelector(`[data-seat="${seatId}"]`)?.focus({preventScroll:true});},onPreview:state=>{const button=$('nav-route').querySelector('[data-route-play]');if(!button)return;button.setAttribute('aria-pressed',String(state.playing));button.innerHTML=icon('play')+(state.playing?'Приостановить':state.done?'Показать ещё раз':'Показать движение');$('nav-route-progress').value=Math.round(state.progress*1000);$('nav-route-position').textContent=state.done?'Вы у цели':state.connection&&state.floor!==state.toFloor?`${routePreferences().stepFree?'Лифт':'Лестница'} · ${state.floor} → ${state.toFloor}`:`${state.floor||route?.from.floor||1}-й этаж · ${Math.round(state.progress*100)}%`;if(state.playing||state.done||seekingPreview)setRouteStep(state.step);},onFailure:switchToPlan});graphicsAvailable=true;$('nav-loading').hidden=true;}catch{switchToPlan();}
+ try{const {createNavigatorScene}=await import('./navigator-scene.js?v=20261112-floor-fit');scene=createNavigatorScene({container:$('campus-map'),campus,onSelect:select,onFloor:showMapFloor,onSeatSelect:(spaceId,seatId)=>{if(selected!==spaceId)select(spaceId);bookingOpen=true;const r=pilot();if(!r||slotErrors().length||pilotStatus(r,availabilityBookings(),slot()).occupied.has(seatId))return;chosen.has(seatId)?chosen.delete(seatId):chosen.add(seatId);renderDetail();$('nav-detail').querySelector(`[data-seat="${seatId}"]`)?.focus({preventScroll:true});},onPreview:state=>{const button=$('nav-route').querySelector('[data-route-play]');if(!button)return;button.setAttribute('aria-pressed',String(state.playing));button.innerHTML=icon('play')+(state.playing?'Приостановить':state.done?'Показать ещё раз':'Показать движение');$('nav-route-progress').value=Math.round(state.progress*1000);$('nav-route-position').textContent=state.done?'Вы у цели':state.connection&&state.floor!==state.toFloor?`${routePreferences().stepFree?'Лифт':'Лестница'} · ${state.floor} → ${state.toFloor}`:`${state.floor||route?.from.floor||1}-й этаж · ${Math.round(state.progress*100)}%`;if(state.playing||state.done||seekingPreview)setRouteStep(state.step);},onFailure:switchToPlan});graphicsAvailable=true;$('nav-loading').hidden=true;}catch{switchToPlan();}
  updateAll();
  const link=readNavigationLink(new URL(location.href),defaultOrigin);
  const target=link.target??pilotRoomById(link.roomId)?.spaceId??link.spaceId;

@@ -5,10 +5,10 @@ import {createMotion} from './navigation-motion.js';
 import {toWorld} from './geometry.js';
 import {createMaquetteProps} from './maquette-props.js?v=20261106-floors1';
 import {createCampusExterior} from './campus-exterior.js?v=20261112-centered-entry';
-import {visualWorld,roomBounds} from './maquette-layout.js?v=20261106-floors1';
+import {floorDisplay,roomBounds,stairDisplay} from './maquette-layout.js?v=20261112-floor-fit';
 import {pilotRoomBySpace} from './pilot-spaces.js';
 import {createRoutePreview,sampleRoutePreview} from './route-preview.js?v=20261112-visit';
-import {buildRouteStair} from './route-stair.js';
+import {buildPlannedStair,buildRouteStair} from './route-stair.js?v=20261112-floor-fit';
 
 export function createNavigatorScene({container,campus,onSelect,onFloor,onFailure,onPreview=()=>{},onSeatSelect=()=>{}}){
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -37,8 +37,9 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  let hoveredFloor=null;
  let overviewMode='building',focusedRoom=null,chosenSpace=null,chosenSeatIds=new Set();const seatLabels=[];
  const depthScale=2.2;
- const reversePlan=floor=>floor===1||floor===5;
- const sceneWorld=(floor,p,y=.12)=>visualWorld(campus.world(floor,p,y),depthScale,reversePlan(floor));
+ const reference=campus.floors.get(4);
+ const display=new Map([...campus.floors].map(([number,floor])=>[number,floorDisplay(floor,reference,depthScale)]));
+ const sceneWorld=(floor,p,y=.12)=>display.get(floor).point(p,y);
  let selected=null,hovered=null,visible=new Set(campus.entries.keys()),availability=new Map(),view=0,topView=false;
  let routeGroup=null,traveller=null,previewPath=null,previewProgress=0,playing=false,previewFrame=null,previewTime=null;
  let stairFocus=null;
@@ -56,14 +57,19 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  }
  function trackedGeometry(g){resources.add(g);return g;}
  for(const [number,f] of campus.floors){
-  const group=new THREE.Group();group.position.set(f.offset[0],(number-1)*10,f.offset[1]*depthScale);group.scale.z=depthScale;if(reversePlan(number)){group.rotation.y=Math.PI;group.position.x*=-1;group.position.z*=-1;}scene.add(group);
+  const placement=display.get(number);
+  const group=new THREE.Group();
+  group.position.set(placement.x,(number-1)*10,placement.z);
+  group.rotation.y=placement.rotation;
+  group.scale.set(placement.scale,1,depthScale*placement.scale);
+  scene.add(group);
   const palette={
    plate:material({color:0xe1e0d7,roughness:.55,metalness:.05}),edge:material({color:0xc6b89e,roughness:.78,metalness:0}),
    wall:material({color:0xe4dbc9,roughness:.82,metalness:0}),
    sill:material({color:number===1?0x646f72:0xc8c5b7,roughness:.82}),trim:material({color:0xe5e0d2,roughness:.82}),frame:material({color:0x60737b,roughness:.5,metalness:.15}),glass:material({color:0x9bbec9,roughness:.35,metalness:.15}),room:material({color:0xe3d4ba,roughness:.6}),
    free:material({color:0xc9b88d,roughness:.4}),selected:material({color:0xffc587,roughness:.38,emissive:0xe98d4b,emissiveIntensity:.16}),
    hover:material({color:0xb6a7d5,roughness:.4}),busy:material({map:hatchTexture,color:0xe0d8df,roughness:.8}),
-   stair:material({color:0x99a4a5,roughness:.35,metalness:.12}),stairRail:material({color:0x7c8889,roughness:.5,metalness:.2})
+   stair:material({color:0x99a4a5,roughness:.35,metalness:.12})
   };
   Object.values(palette).forEach(m=>{m.userData.baseOpacity=1;});palette.glass.userData.baseOpacity=.24;palette.glass.opacity=.24;palette.glass.transparent=true;palette.glass.depthWrite=false;
   const plate=new THREE.Mesh(shapeGeometry(f.source,[f.source.footprint,...(f.source.insets||[])],.55),[palette.plate,palette.edge]);plate.position.y=-.55;group.add(plate);
@@ -80,14 +86,32 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    button.addEventListener('pointerenter',()=>hover(space.id));button.addEventListener('pointerleave',()=>hover(null));button.addEventListener('focus',()=>hover(space.id));button.addEventListener('blur',()=>hover(null));
    labelLayer.append(button);labels.set(space.id,{button,space,outline,position:new THREE.Vector3(...sceneWorld(number,space.center,.82))});
   }
-  for(const [stairIndex,[px,py,pw,ph]] of f.source.stairs.entries()){const [x,z]=toWorld(f.source,px,py),w=pw*80/f.source.imageWidth,d=ph*80/f.source.imageWidth;for(let i=0;i<8;i++){const mesh=new THREE.Mesh(box,f.landings.some(l=>l.isMain&&l.index===stairIndex)?palette.selected:palette.stair);mesh.position.set(x+w/2,.04+i*.035,z+(i+.5)*d/8);mesh.scale.set(w,.08+i*.035,d/8*.84);group.add(mesh);}
-   // slim handrails keep the stair blocks readable as staircases, not stacked plates
-   for(const side of [-1,1]){const rail=new THREE.Mesh(box,palette.stairRail||palette.stair);rail.position.set(x+w/2+side*(w/2+.05),.36,z+d/2);rail.scale.set(.06,.72,d*1.02);group.add(rail);}}
+  const stairParts=[[],[]];
+  for(const stairIndex of f.source.stairs.keys()){
+   const layout=stairDisplay(f.source,stairIndex,([x,z])=>[x,0,z]);
+   const [x,,z]=layout.center;
+   const stair=buildPlannedStair([x,.06,z],[x,.48,z],true,layout);
+   const main=f.landings.some(landing=>landing.isMain&&landing.index===stairIndex);
+   stairParts[Number(main)].push(...stair.treads,...stair.landings);
+  }
+  const stairs=stairParts.flatMap((parts,index)=>{
+   if(!parts.length)return [];
+   const mesh=new THREE.InstancedMesh(box,index?palette.selected:palette.stair,parts.length);
+   for(const [i,part] of parts.entries()){
+    dummy.position.set(...part.position);
+    dummy.scale.set(...part.size);
+    dummy.rotation.set(0,part.rotationY,0);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i,dummy.matrix);
+   }
+   group.add(mesh);
+   return [mesh];
+  });
   for(const landing of f.landings){const b=document.createElement('span');b.className='nav-stair-label';b.textContent=landing.label||'Лестница';b.hidden=true;labelLayer.append(b);stairLabels.push({button:b,number,main:Boolean(landing.isMain),position:new THREE.Vector3(...sceneWorld(number,landing.center,1))});}
   const label=document.createElement('button');label.style.setProperty('--floor-color','#'+floorColors[number-1].toString(16));label.className='nav-level-label';label.type='button';label.innerHTML=`<span>${number}</span><small>этаж</small>`;label.setAttribute('aria-label',`${number}-й этаж`);label.addEventListener('click',()=>onFloor(number));labelLayer.append(label);
   const displayBoundary=[f.source.footprint,...(f.source.insets||[])].flat().map(p=>sceneWorld(number,toWorld(f.source,...p),.6));
   floorLabels.push({button:label,number,boundary:displayBoundary.map(p=>new THREE.Vector3(...p))});
-  floorGroups.set(number,{group,palette,walls,plate,rims,outlineMaterial,envelope});
+  floorGroups.set(number,{group,palette,walls,plate,rims,outlineMaterial,envelope,stairs});
  }
  const decor=createMaquetteProps({campus,box,material,track:trackedGeometry,textures});
  for(const [n,f] of floorGroups){f.decor=decor.floors.get(n);f.group.add(f.decor);}
@@ -165,7 +189,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   const activeStair=routeStairs.get(stairFocus);
   for(const [index,tag] of stairTags.entries()){
    const landing=activeStair?.landings[index];
-   const p=landing&&project(landing.position);
+   const p=landing&&project(activeStair.group.localToWorld(landing.position.clone()));
    tag.hidden=!p||p.x<28||p.x>width-28||p.y<24||p.y>height-24||Math.abs(p.z)>=1;
    if(!tag.hidden){
     tag.textContent=`${landing.floor} этаж`;
@@ -203,9 +227,12 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
     &&(!planOnly||topView)&&(!liftFloors||!topView);
   }
   let shown=0;
-  for(const [index,{group,floors,connector}] of routeStairs.entries()){
+  for(const [index,{group,floors,connectorLines,focusHeight}] of routeStairs.entries()){
    group.visible=routeGroup.visible&&!topView&&(stairFocus===null?(!view||floors.includes(view)):stairFocus===index);
-   if(connector)connector.visible=stairFocus===null;
+   for(const line of connectorLines)line.visible=stairFocus===null;
+   const compact=stairFocus===index;
+   group.scale.y=compact?.38:1;
+   group.position.y=compact?focusHeight*.62:0;
    if(group.visible)shown++;
   }
   container.dataset.routeStairs=String(shown);
@@ -234,7 +261,8 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    ?new THREE.Vector3(isBuilding()&&container.clientWidth/container.clientHeight>=1.15?5:0,view?(view-1)*10:isBuilding()?(container.clientWidth>=700?12:7):20,isBuilding()?-1.8:0)
    :routeStairs.get(stairFocus).bounds.center.clone();
   const portrait=container.clientWidth/container.clientHeight<.7;
-  const offset=topView?new THREE.Vector3(0,80,.12):(portrait?new THREE.Vector3(...(isBuilding()?[-47,46,-62]:[-65,49,-35])):new THREE.Vector3(-26,48,-76));
+  const offset=stairFocus!==null?routeStairs.get(stairFocus).focusOffset
+   :topView?new THREE.Vector3(0,80,.12):(portrait?new THREE.Vector3(...(isBuilding()?[-47,46,-62]:[-65,49,-35])):new THREE.Vector3(-26,48,-76));
   const to=target.clone().add(offset),from=camera.position.clone(),old=controls.target.clone(),zoom=camera.zoom,fromUp=camera.up.clone(),toUp=topView?(portrait?new THREE.Vector3(1,0,0):new THREE.Vector3(0,0,-1)):new THREE.Vector3(0,1,0);controls.enabled=false;
   await motion.run(t=>{setShell(startShell+(endShell-startShell)*t);for(const [n,f] of floorGroups){const end=!view||n===view?1:0;opacity(f,starts.get(n)+(end-starts.get(n))*t);}camera.up.lerpVectors(fromUp,toUp,t).normalize();camera.position.lerpVectors(from,to,t);controls.target.lerpVectors(old,target,t);camera.zoom=zoom+(1-zoom)*t;camera.updateProjectionMatrix();controls.update();render();},animate?(startShell!==endShell?900:620):0);
   if(revision!==viewRevision||disposed||failed)return;setShell(endShell);for(const [n,f] of floorGroups){f.group.visible=floorVisible(n);opacity(f,1);}transitioning=false;container.setAttribute('aria-busy','false');controls.enabled=true;controls.enableRotate=!topView;routeVisibility();render();
@@ -275,7 +303,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   container.dataset.routeStairs='0';
  }
  function routeMaterial(color){return new THREE.MeshBasicMaterial({color,depthTest:false,depthWrite:false,transparent:true,toneMapped:false});}
- function routeLine(a,b,radius,group,color=0xe66c4b){const length=a.distanceTo(b);if(length<.001)return;const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,length,8),routeMaterial(color));mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());mesh.renderOrder=10;group.add(mesh);}
+ function routeLine(a,b,radius,group,color=0x007aff){const length=a.distanceTo(b);if(length<.001)return;const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,length,8),routeMaterial(color));mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());mesh.renderOrder=10;group.add(mesh);}
  function addRouteSurface(object,floor,planOnly=false){
   object.userData.routeFloor=floor;
   object.userData.planOnly=planOnly;
@@ -304,7 +332,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   if(!spans.length)return;
   const transform=new THREE.Object3D(),up=new THREE.Vector3(0,1,0);
   // The pale casing separates the route from the busy model without hiding its shape.
-  for(const [radius,color,order] of [[.23,0xf6eee1,9],[.13,0xd9553e,10]]){
+  for(const [radius,color,order] of [[.23,0xffffff,9],[.13,0x007aff,10]]){
    const mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(radius,radius,1,8),routeMaterial(color),spans.length);
    for(const [index,{a,b,length}] of spans.entries()){transform.position.copy(a).add(b).multiplyScalar(.5);transform.scale.set(1,length,1);transform.quaternion.setFromUnitVectors(up,b.clone().sub(a).normalize());transform.updateMatrix();mesh.setMatrixAt(index,transform.matrix);}
    mesh.instanceMatrix.needsUpdate=true;mesh.renderOrder=order;group.add(mesh);
@@ -331,26 +359,33 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
    mesh.instanceMatrix.needsUpdate=true;
    group.add(mesh);
   }
-  const bounds=new THREE.Box3().setFromObject(group).getBoundingSphere(new THREE.Sphere());
+  const boundsBox=new THREE.Box3().setFromObject(group),focusHeight=(Math.min(connection.fromFloor,connection.toFloor)-1)*10+.18;
+  boundsBox.min.y=focusHeight+(boundsBox.min.y-focusHeight)*.38;
+  boundsBox.max.y=focusHeight+(boundsBox.max.y-focusHeight)*.38;
+  const bounds=boundsBox.getBoundingSphere(new THREE.Sphere());
+  const angle=stair.treads[0]?.rotationY??0;
+  const focusOffset=new THREE.Vector3(-68,62,-36).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
   const raised=point=>new THREE.Vector3(point[0],point[1]+.09,point[2]);
   const spans=[];
-  let connector=null;
+  const connectors=stair.connectors??(stair.connector?[stair.connector]:[]),connectorLines=[];
   for(let i=1;i<stair.path.length;i++){
    const from=stair.path[i-1],to=stair.path[i];
-   if(stair.connector?.[0]===from&&stair.connector[1]===to){
+   if(connectors.some(([a,b])=>a===from&&b===to)){
     const geometry=new THREE.BufferGeometry().setFromPoints([raised(from),raised(to)]);
     const material=new THREE.LineDashedMaterial({color:0xa46782,dashSize:.38,gapSize:.24,depthTest:false,depthWrite:false,transparent:true});
-    connector=new THREE.Line(geometry,material);
+    const connector=new THREE.Line(geometry,material);
     connector.computeLineDistances();
     connector.renderOrder=11;
     group.add(connector);
+    connectorLines.push(connector);
     continue;
    }
    if(from.some((value,index)=>Math.abs(value-to[index])>1e-4))spans.push([raised(from),raised(to)]);
   }
   if(spans.length){
    const up=new THREE.Vector3(0,1,0),direction=new THREE.Vector3();
-   const mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(.09,.09,1,8),routeMaterial(0xe66c4b),spans.length);
+   const radius=Math.min(.09,(stair.treads[0]?.size[0]??1)*.12);
+   const mesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(radius,radius,1,8),routeMaterial(0x007aff),spans.length);
    for(const [index,[from,to]] of spans.entries()){
     direction.subVectors(to,from);
     transform.position.copy(from).add(to).multiplyScalar(.5);
@@ -370,7 +405,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   const landings=[stair.landings[0],stair.landings.at(-1)].flatMap((part,index)=>part
    ?[{position:new THREE.Vector3(...part.position),floor:index===0?Math.min(...floors):Math.max(...floors)}]
    :[]);
-  routeStairs.set(index,{group,floors,bounds,connector,landings});
+  routeStairs.set(index,{group,floors,bounds,connectorLines,landings,focusHeight,focusOffset});
   routeGroup.add(group);
  }
  function setRoute(route){
@@ -394,7 +429,7 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
   const routeFloors=new Set(route.floors);
   const sameEndpoint=route.from.floor===route.to.floor&&route.from.point.every((value,index)=>Math.abs(value-route.to.point[index])<1e-6);
   addRouteEndpoint(route.from.floor,route.from.point,sameEndpoint?'Начало / цель':'Начало',0x594a79,routeFloors);
-  if(!sameEndpoint)addRouteEndpoint(route.to.floor,route.to.point,'Цель',0xd9553e,routeFloors);
+  if(!sameEndpoint)addRouteEndpoint(route.to.floor,route.to.point,'Цель',0x007aff,routeFloors);
   const stairs=new Map();
   if(route.connections.length){
    let stepMaterial,landingMaterial;
@@ -409,7 +444,11 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
      addRouteMarker(toFloor,to,0x8a72bb,true);
      continue;
     }
-    const stair=buildRouteStair(connection,sceneWorld);
+    const ascending=connection.fromFloor<connection.toFloor;
+    const floor=ascending?connection.fromFloor:connection.toFloor;
+    const stairIndex=ascending?connection.stair:connection.toStair;
+    const layout=stairDisplay(campus.floors.get(floor).source,stairIndex,display.get(floor).point);
+    const stair=buildRouteStair(connection,sceneWorld,layout);
     stepMaterial??=new THREE.MeshStandardMaterial({color:0xc8a7bb,roughness:.75});
     landingMaterial??=new THREE.MeshStandardMaterial({color:0xdec3cd,roughness:.65});
     stairs.set(connection,stair);
@@ -451,6 +490,6 @@ export function createNavigatorScene({container,campus,onSelect,onFloor,onFailur
  return {setView,previewFloor,setOverviewMode(mode){const next=mode==='spread'?'spread':'building';if(next===overviewMode)return;overviewMode=next;if(!view)setView(0);},setSeatSelection(spaceId,ids){chosenSpace=spaceId;chosenSeatIds=new Set(ids||[]);decor.setSeatSelection(spaceId,ids);decor.setAvailability(availability,selected);render();},focusRoom,setRoute,playPreview,pausePreview,seekPreview(value){pausePreview();setPreview(value);},setVisible(ids){visible=new Set(ids);if(hovered&&!visible.has(hovered))hover(null);refresh();},setAvailability(data){availability=data;refresh();},select(id,{focus=true}={}){const leaving=!id&&focusedRoom;selected=id;refresh();if(leaving)setView(view);else if(id&&focus)focusRoom(id);},
   setProjection(plan){topView=Boolean(plan);setView(view);},rotate(){if(topView)return;pausePreview();settle();const offset=camera.position.clone().sub(controls.target),from=Math.atan2(offset.x,offset.z),radius=Math.hypot(offset.x,offset.z);turnMotion.run(t=>{const angle=from+Math.PI/2*t;camera.position.set(controls.target.x+Math.sin(angle)*radius,camera.position.y,controls.target.z+Math.cos(angle)*radius);controls.update();render();},450);},
   zoom(factor){pausePreview();settle();camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,.5,focusedRoom?64:16);camera.updateProjectionMatrix();if(focusedRoom&&camera.zoom<.70)setView(view);else if(view&&camera.zoom<.70)onFloor(0);else render();},reset(){setView(view,{stairIndex:stairFocus});},get view(){return view;},
-  dispose(){disposed=true;stopRendering();clearSeatLabels();pausePreview();motion.cancel();turnMotion.cancel();document.removeEventListener('visibilitychange',visibility);observer.disconnect();controls.dispose();clearRoute();exterior.dispose();decor.dispose();floorGroups.forEach(f=>{f.walls.dispose();f.envelope.dispose();});resources.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());stairTags.forEach(tag=>tag.remove());labelLayer.remove();preview.remove();renderer.dispose();renderer.domElement.remove();}
+  dispose(){disposed=true;stopRendering();clearSeatLabels();pausePreview();motion.cancel();turnMotion.cancel();document.removeEventListener('visibilitychange',visibility);observer.disconnect();controls.dispose();clearRoute();exterior.dispose();decor.dispose();floorGroups.forEach(f=>{f.walls.dispose();f.envelope.dispose();f.stairs.forEach(mesh=>mesh.dispose());});resources.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());stairTags.forEach(tag=>tag.remove());labelLayer.remove();preview.remove();renderer.dispose();renderer.domElement.remove();}
  };
 }

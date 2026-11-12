@@ -39,3 +39,18 @@ test('negligible level connector is omitted',()=>{
  const c={fromFloor:1,toFloor:1,from:[0,0],to:[0,0]};
  assert.equal(buildRouteStair(c,world).connector,null);
 });
+
+test('planned stair stays inside its actual rectangle and reverses without flipping the geometry',()=>{
+ const c={fromFloor:1,toFloor:2,from:[-2,0],to:[3,1]};
+ const layout={center:[0,0,0],axis:[0,1],length:2,width:1.2};
+ const a=buildRouteStair(c,world,layout),b=buildRouteStair(reverse(c),world,layout);
+ assert.deepEqual(b.treads,a.treads);
+ assert.deepEqual(b.path,[...a.path].reverse());
+ assert.equal(a.landings.length,3);
+ assert.equal(a.connectors.length,2);
+ for(const part of [...a.treads,...a.landings]){
+  assert.equal(part.rotationY,0);
+  assert.ok(Math.abs(part.position[0])+part.size[0]/2<=layout.width/2+1e-9);
+  assert.ok(Math.abs(part.position[2])+part.size[2]/2<=layout.length/2+1e-9);
+ }
+});

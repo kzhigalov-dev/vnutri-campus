@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildingDirectionsLink,cityDirections,indoorDirections} from '../public/js/campus-buildings.js';
-import {readSchedule} from '../public/js/local-schedule.js';
+import {readSchedule,readScheduleFile,scheduleDays} from '../public/js/local-schedule.js';
 import {readNavigationLink} from '../public/js/navigation-link.js';
 
 const moved={date:'2026-11-12',start:'14:00',end:'15:30',title:'Практика',status:'moved',building:'voznesensky',previousRoom:'459',room:'462'};
@@ -16,6 +16,21 @@ test('invalid import rejects the whole schedule',()=>{
  for(const invalid of [{date:'2026-02-30'},{start:'15:30'},{previousRoom:'462'},{status:'updated'}]){
   assert.throws(()=>readSchedule(JSON.stringify([moved,{...moved,...invalid}])),/Занятие 2/);
  }
+});
+
+test('schedule opens today, the next dated entry, or the last archived day',()=>{
+ const rows=readSchedule(JSON.stringify([{...moved,date:'2026-11-16'},moved,moved]));
+ assert.deepEqual(scheduleDays(rows,'2026-11-13'),{dates:['2026-11-12','2026-11-13','2026-11-16'],initial:'2026-11-16'});
+ assert.equal(scheduleDays(rows,'2026-11-12').initial,'2026-11-12');
+ assert.equal(scheduleDays(rows,'2026-11-20').initial,'2026-11-16');
+ assert.equal(scheduleDays([],'2026-11-20').initial,'2026-11-20');
+});
+
+test('JSON import accepts files with UTF-8 or UTF-16 byte-order marks',async()=>{
+ const json=JSON.stringify([moved]),expected=readSchedule(json);
+ assert.deepEqual(await readScheduleFile(new Blob(['\uFEFF',json])),expected);
+ assert.deepEqual(await readScheduleFile(new Blob([Buffer.from('\uFEFF'+json,'utf16le')])),expected);
+ await assert.rejects(readScheduleFile(new Blob(['<html>'])),/Не удалось прочитать JSON/);
 });
 
 test('a moved class keeps its current room across the city and indoor route links',()=>{
