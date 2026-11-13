@@ -371,7 +371,7 @@ body.campus-page.about-page {--accent: var(--campus-accent); --support-line: var
   .nav-search, .nav-btn, .nav-result, .nav-levels button, .nav-map-zoom button {transition: none;}
 }
 
-/* Route progress and booking actions use the same compact control language. */
+/* Route guidance groups the current instruction with its controls. */
 .nav-route-guide {margin: 14px 0; padding: 14px; border: 1px solid #dce5ed; border-radius: 14px; background: #f5f8fa;}
 .nav-route-guide-current {display: block; color: var(--campus-accent); font-size: 12px; font-weight: 650; line-height: 1.4;}
 .nav-route-guide p {margin: 6px 0 0; color: var(--ink); font-size: 14px; font-weight: 400; line-height: 1.5;}
@@ -379,7 +379,6 @@ body.campus-page.about-page {--accent: var(--campus-accent); --support-line: var
 .nav-route-guide-actions .nav-btn, .nav-room-share {min-height: 40px;}
 .nav-route-guide-actions .nav-btn {flex: 1; padding-inline: 10px; line-height: 1.3;}
 .nav-guide-stair {min-height: 38px; margin-top: 4px; padding: 4px 0; color: var(--campus-accent); text-align: left;}
-.nav-edit-booking {margin: 10px 0; color: var(--campus-accent); font-weight: 600;}
 @media (max-width: 700px) {
   .nav-route-guide-actions .nav-btn, .nav-room-share {min-height: 44px;}
   .nav-guide-stair {min-height: 44px;}
@@ -522,4 +521,115 @@ body:has(.nav-app) {
     border-radius: 4px;
     background: #b9b9be;
   }
+}
+
+/* Wayfinding controls */
+:root {
+  --campus-accent: #005bbf;
+  --campus-active: #e7f0fc;
+  --maps-material: #f9faf7;
+  --maps-shadow: 0 8px 24px #202b2518;
+}
+body:has(.nav-app) {background: #f6f7f3;}
+.nav-header, .nav-footer, .campus-page .header {background: #f8f9f6;}
+.nav-map-area {background: #e9ede6;}
+.nav-hero, .nav-sidebar, .nav-detail, .nav-route, .nav-levels, .nav-map-zoom, .nav-floor-source {
+  border-color: #d6dcd5;
+  backdrop-filter: none;
+}
+.nav-levels, .nav-map-zoom, .nav-floor-source {box-shadow: none;}
+.nav-hero {box-shadow: none;}
+.nav-campus-name {font-size: 11px; margin-bottom: 7px;}
+.nav-hero h1 {margin-bottom: 13px;}
+.nav-app.is-open-model .nav-hero h1 {margin: 0;}
+.nav-hero .nav-hero-work, .nav-hero .nav-hero-work:hover {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  padding-inline: 7px;
+}
+.nav-hero .nav-hero-work:hover {text-decoration: underline; text-underline-offset: 3px;}
+.nav-app.is-open-model .nav-hero-actions .nav-hero-work {display: none;}
+.nav-sidebar h2 {margin-bottom: 15px;}
+.nav-modes {display: grid; grid-template-columns: repeat(3,minmax(0,1fr));}
+.nav-modes button {min-width: 0; width: 100%; padding-inline: 4px;}
+.nav-disclosure-group {border-top: 1px solid var(--line);}
+.nav-disclosure-group > summary {
+  min-height: 44px;
+  padding-block: 11px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nav-disclosure-group > summary::marker {color: var(--muted);}
+.nav-disclosure-group > summary:hover {color: var(--campus-accent);}
+.nav-disclosure-group > summary:focus-visible {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 3px;
+}
+#nav-work-options {margin-top: 6px;}
+.nav-work-filters:not([hidden]) {grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);}
+.nav-work-filters label:first-of-type {grid-column: 1 / -1;}
+#nav-work-notice {margin: 8px 0 0; color: var(--muted); font-size: 12px;}
+.nav-room-primary {display: grid; gap: 4px; margin-bottom: 10px;}
+.nav-room-primary .nav-btn-primary {justify-content: center; min-height: 46px;}
+.nav-room-primary .nav-text-btn, .nav-secondary-actions .nav-text-btn {min-height: 44px; text-align: left;}
+.nav-secondary-actions {display: grid; justify-items: start; padding-bottom: 8px;}
+.nav-settings {max-width: 425px; background: var(--maps-material);}
+.nav-settings h2 {font-size: 24px; margin-bottom: 18px;}
+.nav-settings #nav-origin-tools {display: grid; gap: 6px;}
+.nav-settings label {color: var(--muted); font-weight: 600; font-size: 13px;}
+.nav-settings select {width: 100%; min-height: 44px; margin-bottom: 8px; font-size: 16px; background: #fff;}
+.nav-settings .nav-start-share {justify-self: start; min-height: 44px;}
+.nav-settings .nav-actions {margin-bottom: 0;}
+.nav-route h2 {margin-bottom: 5px;}
+.nav-route .nav-route-origin-label {margin: 0 0 12px; line-height: 1.45;}
+.nav-route-guide {margin-block: 12px; padding: 13px; background: #edf2f8; border-radius: 12px;}
+.nav-route-guide-actions {display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;}
+.nav-route-guide-actions .nav-btn {min-height: 44px;}
+.nav-route .nav-route-evidence {padding: 6px 0 6px 10px; background: none; border-left: 2px solid #b5c6dc; border-radius: 0;}
+.nav-route-extra {gap: 6px; margin-block: 10px;}
+.nav-route-all-steps ol {margin-top: 0;}
+.nav-route [data-route-floor][aria-current=step] {box-shadow: inset 3px 0 var(--campus-accent);}
+.nav-loading:not(.is-error) {place-content: center; gap: 10px;}
+.nav-loading:not(.is-error)::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  margin-inline: auto;
+  border: 2px solid #b7c8d9;
+  border-top-color: var(--campus-accent);
+  border-radius: 50%;
+  animation: campus-loading .8s linear infinite;
+}
+@keyframes campus-loading {to {transform: rotate(360deg);}}
+@media (prefers-reduced-motion: reduce) {
+  .nav-loading:not(.is-error)::before {animation: none;}
+}
+.campus-page .header .brand {color: var(--ink);}
+.campus-page .header nav a {color: var(--muted);}
+.campus-page .header nav a:hover, .campus-page .header nav a[aria-current=page] {color: var(--campus-accent);}
+.campus-page .header nav a[aria-current=page] {border-bottom-color: var(--campus-accent);}
+.campus-page .city-route-actions {display: flex; flex-wrap: wrap; gap: 8px;}
+.campus-page .city-route-actions .button {margin: 0;}
+.campus-page .button-secondary {background: var(--surface); color: var(--campus-accent); border-color: var(--line);}
+.campus-page .button-secondary:hover {background: var(--campus-active); color: var(--campus-accent); border-color: var(--campus-accent);}
+@media (max-width: 1100px) {
+  .nav-header nav .nav-main-links {display: flex;}
+  .nav-header nav .nav-main-links a:not(.nav-today-link) {display: none;}
+}
+@media (max-width: 700px) {
+  .nav-header nav .nav-main-links .nav-today-link {display: inline-flex; min-height: 44px;}
+  .nav-hero {padding: 12px;}
+  .nav-hero h1 {margin-bottom: 10px;}
+  .nav-hero .nav-hero-work {padding-inline: 4px;}
+  .nav-route, .nav-detail {border-radius: 18px 18px 0 0;}
+  .nav-route-guide-actions {grid-auto-columns: minmax(0,1fr);}
+  .nav-settings .nav-actions > * {flex: 1 0 auto;}
+}
+
+@media (max-width: 700px) {
+  .nav-app:has(.nav-detail:not([hidden])) .nav-map {bottom: 45dvh;}
+  .nav-toast {bottom: calc(var(--footer-height) + 66px);}
 }

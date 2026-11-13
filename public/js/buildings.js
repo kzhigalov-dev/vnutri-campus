@@ -20,13 +20,15 @@ function render(){
  route.hidden=!url;
  if(url)route.href=url;
  plan.hidden=!indoor;
+ plan.classList.toggle('button-secondary',Boolean(url));
  if(indoor){
   plan.href=indoor.url.href;
   plan.textContent=indoor.room?`От входа до аудитории ${indoor.room.number} →`:'Открыть план этажей';
  }
  const status=[];
- if(!url)status.push('Выбран один корпус. Городской участок не нужен.');
- if(indoor?.room)status.push(url?`По прибытии откройте маршрут от главного входа до аудитории ${indoor.room.number}.`:`Маршрут внутри корпуса начинается у главного входа.`);
+ if(!url)status.push('Оба адреса совпадают.');
+ else if(!from.value)status.push('Точку старта можно указать в Google Картах.');
+ if(indoor?.room)status.push(url?`У корпуса откройте маршрут от входа до аудитории ${indoor.room.number}.`:`Маршрут внутри корпуса начинается у главного входа.`);
  $('building-status').textContent=status.join(' ');
  const page=new URL(location.href);
  if(from.value)page.searchParams.set('from',from.value);

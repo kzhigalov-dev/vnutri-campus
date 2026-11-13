@@ -15,9 +15,9 @@ const $=id=>document.getElementById(id),app=$('nav-app');
 const icon=name=>`<svg class="nav-icon" aria-hidden="true"><use href="#nav-i-${name}"/></svg>`;
 const defaultOrigin='start-1';
 const routeParams=new URLSearchParams(location.search),previewRequested=routeParams.get('map')==='preview';
-$('nav-route-mode').value=routeParams.get('access')==='step-free'?'step-free':'standard';
-let mapRouting,routeFeedback='';
-function routePreferences(){return {stepFree:$('nav-route-mode').value==='step-free',mapPreview:previewRequested};}
+let stepFree=routeParams.get('access')==='step-free';
+let mapRouting,routeFeedback='',pendingRoute=false;
+function routePreferences(){return {stepFree,mapPreview:previewRequested};}
 let graphicsAvailable=false,routeStairFocus=null,stairReturnStep=-1,stairTrigger=null;
 let services=null,servicesFailed=false;
 let campus,scene,directory,selected=null,directoryEntry=null,origin=defaultOrigin,mode='all',route=null,routeRevision=0,routeStep=-1,toastTimer,returnFocus=null,viewLevel=0;
@@ -62,8 +62,7 @@ function setLevel(number,animate=true,stairIndex=null){
  scene?.setOverviewMode?.(route?'spread':'building');
  app.classList.toggle('is-open-model',number>0);
  $('nav-stage-title').innerHTML=number?`${number} этаж`:'Вознесенский, <br>44–46';
- $('nav-stage-subtitle').textContent=number?'Учебная схема этажа':'Аудитории, маршруты и места для работы.';
- $('nav-open-model').innerHTML=number?'Собрать здание':`Смотреть этажи ${icon('chevron')}`;
+ $('nav-open-model').innerHTML=number?'Здание целиком':`Открыть первый этаж ${icon('chevron')}`;
  if(!number){$('nav-projection').setAttribute('aria-pressed','false');$('nav-projection').querySelector('span').textContent='2D';$('nav-rotate').disabled=false;}
  scene?.setView(number,{animate,stairIndex});
  const source=$('nav-floor-source');
@@ -132,10 +131,12 @@ function setRouteStep(index){
  const label=`${index<0?'Первый шаг':`Шаг ${index+1} из ${count}`} · ${route.floors[displayed]}-й этаж`;
  if(position.textContent!==label)position.textContent=label;
  instruction.textContent=routeFloorInstruction(route,displayed);
- guide.querySelector('[data-route-prev]').disabled=index<=0;
+ const back=guide.querySelector('[data-route-prev]');
  const next=guide.querySelector('[data-route-next]');
- next.disabled=index>=count-1;
- next.textContent=index<0?'Показать первый шаг':'Следующий шаг';
+ if(index<=0&&document.activeElement===back)next.focus({preventScroll:true});
+ back.hidden=index<=0;
+ const finished=index>=count-1;
+ next.textContent=finished?'Весь маршрут':index<0?'Показать первый шаг':'Следующий шаг';
  const stairs=guide.querySelector('[data-guide-stair]');
  const connection=route.connections[displayed];
  stairs.hidden=!graphicsAvailable||!connection||connection.kind==='lift';
@@ -153,6 +154,8 @@ function showMapFloor(number){
 }
 function clearRoute(){
  routeRevision++;
+ pendingRoute=false;
+ $('nav-route-status').textContent='';
  route=null;
  routeFeedback='';
  routeStairFocus=null;
@@ -259,18 +262,21 @@ function renderResults(){
  $('nav-directory-results').innerHTML=real.length?`<p class="nav-directory-heading">Справочник · без привязки к схеме</p>`+real.map(r=>`<button type="button" class="nav-result" data-directory="${e(r.number)}"><span class="nav-result-code">${e(r.number)}</span><span class="nav-result-main"><strong>${e(r.label)}</strong><small>Положение не подтверждено</small></span></button>`).join(''):'';
  const isContact=mode==='contact',serviceMode=mode==='services';
  const serviceOnly=serviceMode||(serviceCount>0&&!result.length&&!real.length);
- const hasServiceRoute=Boolean(query&&$('nav-service-results').querySelector('[data-service-destination]'));
  $('nav-result-count').textContent=serviceOnly
   ?`Услуг: ${serviceCount}`
-  :`На схеме: ${result.length}${mode==='work'?` из ${pilotRooms.length}`:''}${serviceCount?` · Услуг: ${serviceCount}`:''}`;
+  :campus?`На схеме: ${result.length}${mode==='work'?` из ${pilotRooms.length}`:''}${serviceCount?` · Услуг: ${serviceCount}`:''}`:'Загружаем карту…';
  $('nav-search-title').textContent={contact:'Обратная связь',work:'Место для работы',services:'Услуги'}[mode]||'Поиск по кампусу';
- for(const key of ['all','work','services','contact'])$('nav-mode-'+key).setAttribute('aria-pressed',String(mode===key));
+ $('nav-search-modes').hidden=isContact;
+ for(const key of ['all','work','services'])$('nav-mode-'+key).setAttribute('aria-pressed',String(mode===key));
  $('nav-sidebar-contact').hidden=!isContact;
- for(const id of ['nav-filter-row','nav-results','nav-directory-results'])$(id).hidden=isContact||serviceOnly;
- $('nav-origin-tools').hidden=isContact||(serviceOnly&&!hasServiceRoute&&!route);
- $('nav-work-filters').hidden=!filters.work;
+ for(const id of ['nav-results','nav-directory-results'])$(id).hidden=isContact||serviceOnly;
+ $('nav-filter-reset').hidden=!query&&filters.category==='all'&&filters.minSeats===1&&!filters.equipment.length;
+ const workOptions=$('nav-work-options');
+ workOptions.hidden=isContact||!filters.work;
+ workOptions.querySelector('summary').textContent=filters.category!=='all'||filters.minSeats>1||filters.equipment.length
+  ?'Фильтры рабочих мест · применены':'Фильтры рабочих мест';
+ $('nav-work-notice').hidden=!missingEquipment||isContact;
  $('nav-work-notice').textContent=missingEquipment?'В каталоге нет сведений об этом оснащении.':'';
- $('nav-start-share').disabled=!campus?.entries.get(origin)?.point;
  $('nav-results-head').hidden=isContact;
 }
 function renderDetail(){
@@ -280,10 +286,26 @@ function renderDetail(){
  app.classList.toggle('has-context',Boolean(entry||r||directoryEntry));
  if(directoryEntry){const source=directory.sources[directoryEntry.source_ids[0]];panel.hidden=false;panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(directoryEntry.number)}</h2><p class="nav-room-title">${e(directoryEntry.label)}</p><p>Номер из справочника. Современное положение на плане не подтверждено.</p><a class="nav-btn" href="${e(source.url)}" target="_blank" rel="noopener">Открыть источник</a><a class="nav-btn nav-btn-wide" href="./about.html">О точности макета</a>`;return;}
  if(!entry&&!r){panel.hidden=true;return}panel.hidden=false;
- const evidenceOpen=panel.dataset.space===selected&&panel.querySelector('.nav-evidence')?.open;panel.dataset.space=selected||'';
+ const sameSpace=panel.dataset.space===selected;
+ const evidenceOpen=sameSpace&&panel.querySelector('.nav-evidence')?.open;
+ const extrasOpen=sameSpace&&panel.querySelector('.nav-room-options')?.open;
+ panel.dataset.space=selected||'';
  const title=entry?.displayName||r?.name||'Помещение модели',number=entry?.label||r?.number;
  const panelGroup=entry&&campus.floors.get(entry.floor)?.source.sourceKind==='wayfinding-panel'&&/^\d{3}\s*[-–—]\s*\d{3}$/u.test(number);
- panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(number)}</h2><p class="nav-room-title">${e(title)}</p>${panelGroup?'<p class="nav-note">Панель показывает эту группу целиком. Отдельные двери на схеме не различимы.</p>':''}<p class="nav-kind"><span class="nav-space-meta">${r?'Пилотное пространство':entry?.directoryRoom?'Кабинет в макете':'Помещение модели'} · ${r?.floor||entry.floor}-й этаж</span>${r?'<span class="nav-concept-note">Оборудование и размещение — концепция</span>':''}</p>${r?`<div class="nav-equipment">${r.equipment.map(x=>`<span>${e(x)}</span>`).join('')}</div>`:''}<div class="nav-actions"><button class="nav-btn nav-btn-primary" data-route${entry?.point?'':' disabled'}>${icon('route')}${routePreferences().stepFree?'Маршрут без лестниц':'Как добраться'}</button>${entry?.point&&!routePreferences().stepFree?'<button type="button" class="nav-text-btn" data-step-free-route>Без лестниц</button>':''}<button class="nav-text-btn" data-start${entry?.point?'':' disabled'}>Начать отсюда</button>${entry?'<button type="button" class="nav-btn nav-room-share" data-share-room>Ссылка на помещение</button>':''}<button class="nav-btn" data-contact-room="${e(number)}" aria-label="Связаться">${icon('mail')}Связаться</button></div>${routeFeedback?`<p id="nav-route-feedback" class="nav-field-error" role="status" tabindex="-1">${e(routeFeedback)}</p>${routePreferences().stepFree&&!mapRouting?.error?'<a class="nav-text-btn" href="./orientation.html#access">Доступность и контакты университета →</a>':''}`:''}${r?`<p class="nav-note">До ${r.seatCount} мест по учебной модели.</p>`:''}${entry?.directoryRoom?`<div class="nav-placement-note"><strong>Номер по навигационной панели</strong><details class="nav-evidence"${evidenceOpen?' open':''}><summary>${entry.directoryRoom.evidence_status==='conflicting'?'Источники расходятся':entry.directoryRoom.evidence_status==='historical'?'По архиву · сведения и источник':'Сведения и источник'}</summary><p>${e(roomEvidence(entry.directoryRoom))}</p><small>Индекс модели: ${e(entry.modelIndex)}</small><a href="${e(directory.sources[entry.directoryRoom.source_ids[0]].url)}" target="_blank" rel="noopener">Источник о кабинете</a></details></div>`:''}<p class="nav-disclosure">${r?'Возможность работы в аудитории уточняйте в университете.':entry?.placement?'Номер и расположение — по панели; назначение — по справочнику.':'Схема по источнику этажа. Современное назначение не установлено.'}</p>`;
+ panel.innerHTML=`<button class="nav-close" data-close aria-label="Закрыть помещение">${icon('close')}</button><h2>${e(number)}</h2><p class="nav-room-title">${e(title)}</p>${panelGroup?'<p class="nav-note">Панель показывает эту группу целиком. Отдельные двери на схеме не различимы.</p>':''}<p class="nav-kind"><span class="nav-space-meta">${r?'Пилотное пространство':entry?.directoryRoom?'Кабинет в макете':'Помещение модели'} · ${r?.floor||entry.floor}-й этаж</span>${r?'<span class="nav-concept-note">Оборудование и размещение — концепция</span>':''}</p>${r?`<div class="nav-equipment">${r.equipment.map(x=>`<span>${e(x)}</span>`).join('')}</div>`:''}<div class="nav-actions nav-room-primary">
+ <button type="button" class="nav-btn nav-btn-primary" data-route${entry?.point&&!pendingRoute?'':' disabled'}>${icon('route')}${pendingRoute?'Проверяем проходы…':routePreferences().stepFree?'Маршрут без лестниц':'Построить маршрут'}</button>
+ ${entry?.point?'<button type="button" class="nav-text-btn" data-route-settings>Настройки маршрута</button>':''}
+ </div>
+ ${routeFeedback?`<p id="nav-route-feedback" class="nav-field-error" role="status" tabindex="-1">${e(routeFeedback)}</p>${routePreferences().stepFree&&!mapRouting?.error?'<a class="nav-text-btn" href="./orientation.html#access">Доступность и контакты университета →</a>':''}`:''}
+ <details class="nav-disclosure-group nav-room-options"${extrasOpen?' open':''}>
+  <summary>Действия с помещением</summary>
+  <div class="nav-secondary-actions">
+   ${entry?.point?'<button type="button" class="nav-text-btn" data-start>Начать отсюда</button>':''}
+   ${entry?'<button type="button" class="nav-text-btn" data-share-room>Скопировать ссылку</button>':''}
+   <button type="button" class="nav-text-btn" data-contact-room="${e(number)}">Сообщить об аудитории</button>
+  </div>
+ </details>
+ ${r?`<p class="nav-note">До ${r.seatCount} мест по учебной модели.</p>`:''}${entry?.directoryRoom?`<div class="nav-placement-note"><strong>Номер по навигационной панели</strong><details class="nav-evidence"${evidenceOpen?' open':''}><summary>${entry.directoryRoom.evidence_status==='conflicting'?'Источники расходятся':entry.directoryRoom.evidence_status==='historical'?'По архиву · сведения и источник':'Сведения и источник'}</summary><p>${e(roomEvidence(entry.directoryRoom))}</p><small>Индекс модели: ${e(entry.modelIndex)}</small><a href="${e(directory.sources[entry.directoryRoom.source_ids[0]].url)}" target="_blank" rel="noopener">Источник о кабинете</a></details></div>`:''}<p class="nav-disclosure">${r?'Возможность работы в аудитории уточняйте в университете.':entry?.placement?'Номер и расположение — по панели; назначение — по справочнику.':'Схема по источнику этажа. Современное назначение не установлено.'}</p>`;
 }
 
 function updateAll(){renderResults();renderDetail();}
@@ -291,18 +313,22 @@ function select(id,{keepUrl=false}={}){if(!visible.has(id)){toast('Помеще�
 function selectDirectory(number){clearSelection();directoryEntry=directory?.rooms.find(r=>r.number===number);closeList();renderDetail();const title=$('nav-detail').querySelector('h2');title?.setAttribute('tabindex','-1');title?.focus({preventScroll:true});}
 async function displayRoute(){
  const target=current();
- if(!campus||!target?.point)return;
+ if(!campus||!target?.point||pendingRoute)return;
  const request=++routeRevision,from=origin,to=target.id;
  const preferences=routePreferences();
  history.replaceState(null,'',createRouteLink(location.href,from,to,preferences));
  if(mapRouting.error){showRouteFeedback(mapRouting.error);return;}
- const pendingToast=toast('Проверяем проходы в схеме…');
+ pendingRoute=true;
+ const routeButton=$('nav-detail').querySelector('[data-route]');
+ if(routeButton){
+  routeButton.disabled=true;
+  routeButton.textContent='Проверяем проходы…';
+ }
+ $('nav-route-status').textContent='Проверяем проходы…';
  await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
  if(request!==routeRevision)return;
- if(toastTimer===pendingToast){
-  clearTimeout(toastTimer);
-  $('nav-toast').hidden=true;
- }
+ pendingRoute=false;
+ $('nav-route-status').textContent='';
  let computed;
  try{
   const options={closures:mapRouting.closures};
@@ -384,9 +410,9 @@ function renderRoute(){
  </div>`:'';
  panel.innerHTML=`<div id="nav-route-overview">
   <button type="button" class="nav-close" data-route-close aria-label="Закрыть маршрут">${icon('close')}</button>
-  <h2 id="nav-route-title" tabindex="-1">Как добраться</h2>
-  <p class="nav-kind">${previewRequested?'Локальный предпросмотр карты':routePreferences().stepFree?'Маршрут без лестниц':'Учебный маршрут по модели'}</p>
-  <p class="nav-route-endpoints">${e(route.from.label)} → ${e(route.to.label)}</p>
+  <h2 id="nav-route-title" tabindex="-1">Маршрут до ${e(route.to.label)}</h2>
+  <p class="nav-route-origin-label">Откуда: ${e(route.from.label)}</p>
+  ${previewRequested||stepFree?'<p class="nav-kind">'+(previewRequested?'Локальный предпросмотр карты':'Без лестниц')+'</p>':''}
   <section class="nav-route-guide" aria-label="Шаги маршрута">
    <div class="nav-route-guide-current" aria-live="polite" aria-atomic="true"><strong data-guide-position></strong><p data-guide-instruction></p></div>
    <div class="nav-route-guide-actions">
@@ -398,10 +424,10 @@ function renderRoute(){
   ${detour?`<p class="nav-route-evidence">На панели 2-го этажа указан обход через 3-й. Спуск к этой секции — по лестнице №${detour.stairNumber}. <a href="./orientation.html#panel-2">Фото указателя →</a></p>`:''}
   ${destinationSign?`<p class="nav-route-evidence">На указателе 4-го этажа ищите диапазон ${destinationSign}. <a href="./orientation.html#panel-4">Фото указателя →</a></p>`:''}
   ${graphicsAvailable?'':scene?'<p>Выберите этаж, чтобы увидеть его участок пути. А — начало, Б — цель, цифры — номера лестниц.</p>':'<p>Карта недоступна. Следуйте текстовым шагам маршрута.</p>'}
-  <button type="button" class="nav-text-btn" data-route-origin>Изменить начало маршрута</button>
-  <ol>${steps}</ol>
-  ${journey}
-  <div class="nav-actions">
+  <details class="nav-disclosure-group nav-route-all-steps"><summary>Все шаги · ${route.floors.length}</summary><ol>${steps}</ol></details>
+  ${journey?`<details class="nav-disclosure-group"><summary>Движение по маршруту</summary>${journey}</details>`:''}
+  <div class="nav-actions nav-route-extra">
+   <button type="button" class="nav-btn" data-route-origin>Настройки маршрута</button>
    ${scene?`<button type="button" class="nav-btn" data-route-all>${graphicsAvailable?'Весь маршрут':'Этаж отправления'}</button>`:''}
    <button type="button" class="nav-btn" data-route-share>Ссылка на маршрут</button>
   </div>
@@ -485,7 +511,7 @@ $('nav-detail').addEventListener('click',event=>{
  if(button.hasAttribute('data-close'))closePassport();
  if(button.hasAttribute('data-share-room')&&current())copyLink(createSpaceLink(location.href,selected),$('nav-detail'),'Ссылка на помещение');
  if(button.hasAttribute('data-route'))displayRoute();
- if(button.hasAttribute('data-step-free-route')){$('nav-route-mode').value='step-free';displayRoute();}
+ if(button.hasAttribute('data-route-settings'))openRouteSettings();
  if(button.hasAttribute('data-start')&&selected&&setOrigin(selected)){persistOrigin();toast('Точка старта изменена. Выберите, куда идти.');}
  if(button.dataset.contactRoom)window.openContactModal?.({room:button.dataset.contactRoom,subject:'Вопрос по аудитории '+button.dataset.contactRoom});
 });
@@ -493,7 +519,7 @@ function leaveRouteStair(){
  const index=routeStairFocus;
  const trigger=stairTrigger;
  if(stairReturnStep>=0)showRouteStep(stairReturnStep);
- else setLevel(0);
+ else{setLevel(0);setRouteStep(-1);}
  stairReturnStep=-1;
  stairTrigger=null;
  (trigger?.isConnected&&!trigger.hidden?trigger:$('nav-route').querySelector(`[data-route-stair="${index}"]`))?.focus();
@@ -505,7 +531,7 @@ $('nav-route').addEventListener('click',event=>{
   returnToRoom();
   $('nav-detail').querySelector('[data-route]')?.focus();
  }
- if(button.hasAttribute('data-route-origin')){openList();$('nav-origin-tools').hidden=false;$('nav-origin').focus();}
+ if(button.hasAttribute('data-route-origin'))openRouteSettings();
  if(button.hasAttribute('data-route-play')){
   if(button.getAttribute('aria-pressed')==='true')scene?.pausePreview();
   else{
@@ -524,7 +550,10 @@ $('nav-route').addEventListener('click',event=>{
  }
  if(button.hasAttribute('data-stair-back'))leaveRouteStair();
  if(button.hasAttribute('data-route-all'))setLevel(0);
- if(button.hasAttribute('data-route-next'))showRouteStep(routeStep+1);
+ if(button.hasAttribute('data-route-next')){
+  if(routeStep===route.floors.length-1){setLevel(0);setRouteStep(-1);}
+  else showRouteStep(routeStep+1);
+ }
  if(button.hasAttribute('data-route-prev'))showRouteStep(routeStep-1);
  if(button.dataset.routeFloor)showRouteStep(Number(button.dataset.routeStep));
  if(button.hasAttribute('data-route-share'))copyRoute();
@@ -567,8 +596,9 @@ document.querySelector('.nav-search').addEventListener('click',openSearch);$('na
 });
 $('nav-category').addEventListener('change',()=>{if($('nav-category').value!=='all')mode='work';updateAll()});
 for(const id of ['nav-team-size','nav-equipment'])$(id).addEventListener('change',()=>updateAll());
-$('nav-mode-all').addEventListener('click',()=>{mode='all';resetWorkFilters();updateAll()});$('nav-mode-work').addEventListener('click',()=>{mode='work';updateAll()});$('nav-mode-contact')?.addEventListener('click',()=>{mode='contact';updateAll();openList();});
-$('nav-mode-services').addEventListener('click',()=>{mode='services';openList();updateAll()});
+$('nav-mode-all').addEventListener('click',()=>{mode='all';resetWorkFilters();updateAll()});
+$('nav-mode-work').addEventListener('click',()=>{resetWorkFilters();mode='work';updateAll()});
+$('nav-mode-services').addEventListener('click',()=>{resetWorkFilters();mode='services';openList();updateAll()});
 $('nav-service-results').addEventListener('click',event=>{
  const share=event.target.closest('[data-service-share]');
  if(share){
@@ -586,6 +616,7 @@ function resetWorkFilters(){
  $('nav-category').value='all';
  $('nav-team-size').value='1';
  $('nav-equipment').value='';
+ $('nav-work-options').open=false;
 }
 function resetFilters(){mode='all';$('nav-query').value='';resetWorkFilters();updateAll();}
 $('nav-filter-reset').addEventListener('click',()=>{
@@ -593,24 +624,36 @@ $('nav-filter-reset').addEventListener('click',()=>{
  $('nav-query').value='';
  updateAll();
 });
-$('nav-origin').addEventListener('change',()=>{
- const rebuild=(Boolean(route)||new URL(location.href).searchParams.has('to'))&&Boolean(current()?.point);
- if(!setOrigin($('nav-origin').value))return;
- if(rebuild){
-  closeList();
-  displayRoute();
-  return;
+function openRouteSettings(){
+ if(!campus){toast('Дождитесь загрузки карты.');return;}
+ $('nav-origin').value=origin;
+ $('nav-route-mode').value=stepFree?'step-free':'standard';
+ $('nav-settings-submit').textContent=current()?.point?'Построить маршрут':'Сохранить';
+ $('nav-route-settings').showModal();
+}
+document.querySelector('[data-open-route-settings]').addEventListener('click',()=>{
+ $('nav-project-menu').hidePopover();
+ openRouteSettings();
+});
+$('nav-settings-cancel').addEventListener('click',()=>$('nav-route-settings').close());
+$('nav-settings-form').addEventListener('submit',event=>{
+ event.preventDefault();
+ const id=$('nav-origin').value;
+ if(!campus?.entries.get(id)?.point)return;
+ stepFree=$('nav-route-mode').value==='step-free';
+ $('nav-route-settings').close();
+ if(!setOrigin(id))return;
+ if(current()?.point)displayRoute();
+ else{
+  persistOrigin();
+  const url=writeRoutePreferences(new URL(location.href),routePreferences());
+  history.replaceState(null,'',url);
+  toast('Настройки сохранены. Выберите кабинет на карте.');
  }
- persistOrigin();
 });
 $('nav-start-share').addEventListener('click',()=>{
- if(campus?.entries.get(origin)?.point)copyLink(createStartLink(location.href,origin),$('nav-origin-tools'),'Ссылка на точку старта');
-});
-$('nav-route-mode').addEventListener('change',()=>{
- const url=writeRoutePreferences(new URL(location.href),routePreferences());
- history.replaceState(null,'',url);
- if(url.searchParams.has('to')&&current()?.point){closeList();displayRoute();}
- else{routeFeedback='';renderDetail();}
+ const id=$('nav-origin').value;
+ if(campus?.entries.get(id)?.point)copyLink(createStartLink(location.href,id),$('nav-origin-tools'),'Ссылка на точку старта');
 });
 document.querySelectorAll('[data-level]').forEach(button=>button.addEventListener('click',()=>showMapFloor(button.dataset.level)));
 document.querySelectorAll('[data-level]').forEach(b=>{const peek=()=>scene?.previewFloor?.(Number(b.dataset.level));b.addEventListener('pointerenter',peek);b.addEventListener('focus',peek);b.addEventListener('pointerleave',()=>scene?.previewFloor?.(null));b.addEventListener('blur',()=>scene?.previewFloor?.(null));});
@@ -619,10 +662,9 @@ $('nav-zoom-in').addEventListener('click',()=>scene?.zoom(1.2));$('nav-zoom-out'
 $('nav-list-close').addEventListener('click',closeSearch);
 window.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){event.preventDefault();openList();$('nav-query').focus();return;}if(event.key==='Escape'&&!document.querySelector('dialog[open]')){if(app.classList.contains('is-list-open')){event.preventDefault();closeSearch();return}if(routeStairFocus!==null){leaveRouteStair();return;}if(route){returnToRoom();$('nav-detail').querySelector('[data-route]')?.focus()}else if(selected||directoryEntry){closePassport()}else setLevel(0);}});
 $('campus-map').addEventListener('keydown',event=>{if(event.key==='+'||event.key==='='){event.preventDefault();scene?.zoom(1.2)}if(event.key==='-'){event.preventDefault();scene?.zoom(1/1.2)}});
-function findWork(){resetFilters();mode='work';setLevel(4);openList();updateAll();$('nav-search-title').textContent='Место для работы';}
+function findWork(){resetFilters();mode='work';setLevel(4);openList();updateAll();$('nav-search-title').setAttribute('tabindex','-1');$('nav-search-title').focus({preventScroll:true});}
 $('nav-open-model').addEventListener('click',()=>{clearSelection();resetFilters();setLevel(viewLevel?0:1)});
 $('nav-find-work').addEventListener('click',findWork);
-$('nav-sidebar').addEventListener('click',event=>{const action=event.target.closest('[data-quick]')?.dataset.quick;if(action==='work')findWork();if(action==='rooms'){resetFilters();$('nav-query').focus()}});
 document.addEventListener('pointerdown',event=>{if(app.classList.contains('is-list-open')&&!event.target.closest('#nav-sidebar,.nav-search,#nav-list-toggle,#nav-find-work'))closeList()});
 $('nav-search-shortcut').textContent=/Mac|iPhone|iPad/.test(navigator.platform)?'⌘ K':'Ctrl K';
 initContactForm();window.activateContactMode=(options={})=>{mode='contact';updateAll();openList();if(options.room){const r=$('sidebar-contact-room');if(r)r.value=options.room;}if(options.subject){const s=$('sidebar-contact-subject');if(s)s.value=options.subject;}setTimeout(()=>$('sidebar-contact-name')?.focus(),50);};
@@ -672,5 +714,5 @@ try{const load=async path=>{const r=await fetch(path);if(!r.ok)throw Error(path)
   if(!current()?.point)toast('Помещение по ссылке недоступно для маршрута.');
   else if(hasOrigin)displayRoute();
  }
-}catch(error){openList();$('nav-loading').textContent='Не удалось загрузить схему. Проверьте подключение и обновите страницу.';$('nav-loading').classList.add('is-error');toast('Не удалось загрузить планы. Проверь подключение.');updateAll();}
+}catch{openList();$('nav-loading').textContent='Не удалось загрузить карту. Проверьте подключение и обновите страницу.';$('nav-loading').classList.add('is-error');updateAll();}
 window.addEventListener('pagehide',event=>{if(!event.persisted)scene?.dispose()});
