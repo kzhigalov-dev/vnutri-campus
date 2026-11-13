@@ -7,21 +7,31 @@ const clean=(value,max)=>typeof value==='string'?value.trim().slice(0,max):'';
 
 export function readSchedule(source){
  const rows=JSON.parse(source.replace(/^\uFEFF/,''));
+ return normalizeScheduleRows(rows);
+}
+
+export function normalizeScheduleRows(rows,{weekly=false}={}){
  if(!Array.isArray(rows)||rows.length>500)throw new Error('Нужен массив из максимум 500 занятий.');
  return rows.map((row,index)=>{
   const error=()=>new Error(`Занятие ${index+1}: проверьте дату, время, название и статус.`);
   if(!row||typeof row!=='object')throw error();
   const {date,start,end}=row,status=row.status??'scheduled';
   const title=clean(row.title,160),room=clean(row.room,40),previousRoom=clean(row.previousRoom,40);
-  if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw error();
-  const day=new Date(date+'T00:00:00Z');
-  if(!Number.isFinite(+day)||day.toISOString().slice(0,10)!==date)throw error();
+  if(weekly){
+   if(!Number.isInteger(row.weekday)||row.weekday<0||row.weekday>6||!['both','numerator','denominator'].includes(row.weekType))throw error();
+  }else{
+   if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw error();
+   const day=new Date(date+'T00:00:00Z');
+   if(!Number.isFinite(+day)||day.toISOString().slice(0,10)!==date)throw error();
+  }
   if(!title||typeof start!=='string'||typeof end!=='string'||!time.test(start)||!time.test(end)||start>=end||!statuses.has(status))throw error();
   if(status==='moved'&&(!room||!previousRoom||room===previousRoom))throw error();
   const building=buildingById(row.building);
   const placement=mappedBuildingRoom(building?.id,room);
   return {
-   id:`local-${index}`,date,start,end,status,title,room,previousRoom,building:building?.id??'',
+   id:`local-${index}`,...(weekly?{weekday:row.weekday,weekType:row.weekType}:{date}),
+   start,end,status,title,room,previousRoom,building:building?.id??'',
+   ...(weekly?{teacher:clean(row.teacher,180),lessonType:clean(row.lessonType,40)}:{}),
    address:building?.address??clean(row.address,200),
    ...(status!=='cancelled'&&placement?{destination:placement.spaceId}:{}),
   };
@@ -29,6 +39,13 @@ export function readSchedule(source){
 }
 
 export async function readScheduleFile(file){
+ const name=file.name??'';
+ if(/\.xlsx$/iu.test(name)){
+  const {readXlsxSchedule,MAX_XLSX_SIZE}=await import('./xlsx-schedule.js?v=20261113-xlsx');
+  if(file.size>MAX_XLSX_SIZE)throw new Error('Файл Excel слишком большой. Максимум 2 МБ.');
+  return readXlsxSchedule(new Uint8Array(await file.arrayBuffer()));
+ }
+ if(/\.(?:xls|xlsm|xlsb|csv)$/iu.test(name))throw new Error('Скачайте расписание в формате .xlsx или выберите JSON.');
  if(file.size>256000)throw new Error('Файл слишком большой. Максимум 256 КБ.');
  const bytes=new Uint8Array(await file.arrayBuffer());
  const encoding=bytes[0]===0xff&&bytes[1]===0xfe?'utf-16le':bytes[0]===0xfe&&bytes[1]===0xff?'utf-16be':'utf-8';
