@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import {mergeGeometries} from '../vendor/BufferGeometryUtils.js';
 import {toWorld} from './geometry.js';
-import {pilotRoomBySpace} from './pilot-spaces.js';
+import {pilotRoomBySpace} from './pilot-spaces.js?v=20261113-navigation';
 import {FLOOR_WORLDS,roomBounds,seatLayout} from './maquette-layout.js?v=20261030-11';
 // A deliberately authored campus maquette, not a survey of current interiors.
 export function createMaquetteProps({campus,box,material,track,textures}){
  const white=material({color:0xf0e9dc,roughness:.72}),wood=material({color:0xc89d74,roughness:.8}),ink=material({color:0x233d50,roughness:.6}),leaf=material({color:0x6f9279,roughness:.9}),coral=material({color:0xe89873,roughness:.7}),glass=material({color:0x93b6cb,metalness:.25,roughness:.35});
  const seatPart=box.clone();seatPart.scale(.75,.14,.62);seatPart.translate(0,.39,0);const backPart=box.clone();backPart.scale(.75,.48,.1);backPart.translate(0,.66,-.26);const chairGeometry=track(mergeGeometries([seatPart,backPart]));seatPart.dispose();backPart.dispose();
- const cylinder=track(new THREE.CylinderGeometry(1,1,1,12)),sphere=track(new THREE.SphereGeometry(1,12,8)),batches=new Map(),seats=new Map(),roomProps=new Map(),batchMeshes=[];let activeSeats=seats,activeRoomProps=roomProps;
+ const cylinder=track(new THREE.CylinderGeometry(1,1,1,12)),sphere=track(new THREE.SphereGeometry(1,12,8)),batches=new Map(),roomProps=new Map(),batchMeshes=[];let activeRoomProps=roomProps;
  function primitive(parent,geo,mat,x,y,z,w,h,d,ry=0){let map=batches.get(parent);if(!map){map=new Map();batches.set(parent,map);}const key=geo.uuid+mat.uuid;if(!map.has(key))map.set(key,{geo,mat,items:[]});map.get(key).items.push({x,y,z,w,h,d,ry});}
  const b=(p,m,x,y,z,w,h,d,ry=0)=>primitive(p,box,m,x,y,z,w,h,d,ry);
  const c=(p,m,x,y,z,w,h,d)=>primitive(p,cylinder,m,x,y,z,w,h,d);
@@ -16,7 +16,17 @@ export function createMaquetteProps({campus,box,material,track,textures}){
  function table(p,x,z,w,d,s=.3){b(p,wood,x,s,z,w,.045,d);for(const dx of [-.38,.38])for(const dz of [-.3,.3])b(p,ink,x+w*dx,s/2,z+d*dz,.035,s,.035);}
  function shelf(p,x,z,w,h=.75){b(p,wood,x,h/2,z,w,h,.12);for(let i=0;i<3;i++){b(p,ink,x,.13+i*.21,z+.075,w,.025,.04);for(let j=0;j<5;j++)b(p,j%2?white:coral,x-w*.38+j*w*.18,.22+i*.21,z+.095,w*.1,.15,.07);}}
  function poster(p,x,z,w,h=.65){b(p,ink,x,h/2+.18,z,w+.04,h+.04,.035);b(p,white,x,h/2+.18,z+.025,w,h,.015);b(p,coral,x-w*.12,h*.62+.18,z+.04,w*.5,h*.18,.01);b(p,glass,x+w*.17,h*.28+.18,z+.04,w*.22,h*.27,.01);}
- function chair(p,x,z,s,angle,roomId,seatId){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=angle;p.add(g);if(!roomId){b(g,coral,0,s*.39,0,s*.75,s*.14,s*.62);b(g,coral,0,s*.66,-s*.26,s*.75,s*.48,s*.1);b(g,ink,0,s*.2,0,.035,s*.4,.035);b(g,ink,0,.025,0,s*.56,.035,s*.48);return;}const mesh=new THREE.Mesh(chairGeometry,coral);mesh.scale.setScalar(s);mesh.userData={spaceId:roomId,seatId};g.add(mesh);const back=mesh;b(g,ink,0,s*.2,0,.035,s*.4,.035);b(g,ink,0,.025,0,s*.56,.035,s*.48);if(roomId==='f4-s36')for(const x of [-s*.4,s*.4])b(g,coral,x,s*.5,0,s*.13,s*.28,s*.7);if(roomId){if(!activeSeats.has(roomId))activeSeats.set(roomId,[]);activeSeats.get(roomId).push({mesh,back,seatId,baseMaterial:roomId==='f4-s31'?leaf:['f4-s4','f4-s13'].includes(roomId)?glass:roomId==='f4-s20'?wood:['f4-s27','f4-s39'].includes(roomId)?white:coral});}}
+ function chair(parent,x,z,size,angle,roomId){
+  const group=new THREE.Group();
+  group.position.set(x,0,z);
+  group.rotation.y=angle;
+  parent.add(group);
+  const color=roomId==='f4-s31'?leaf:['f4-s4','f4-s13'].includes(roomId)?glass:roomId==='f4-s20'?wood:['f4-s27','f4-s39'].includes(roomId)?white:coral;
+  primitive(group,chairGeometry,color,0,0,0,size,size,size);
+  b(group,ink,0,size*.2,0,.035,size*.4,.035);
+  b(group,ink,0,.025,0,size*.56,.035,size*.48);
+  if(roomId==='f4-s36')for(const x of [-size*.4,size*.4])b(group,coral,x,size*.5,0,size*.13,size*.28,size*.7);
+ }
  // One texture atlas per floor keeps every door number crisp without loading
  // an image per room. Placards follow the same room visibility as the furniture.
  function addWayfinding(root,f,n){
@@ -44,7 +54,7 @@ export function createMaquetteProps({campus,box,material,track,textures}){
    if(showcaseOnly){const backH=1.48;b(p,white,0,backH/2,-d*.46,w*.94,backH,.055);b(p,white,-w*.46,.24,0,.055,.48,d*.9);b(p,white,w*.46,.24,-d*.2,.055,.48,d*.5);}
    b(p,wood,-w*.23,.07,d*.44,w*.36,.14,.04);b(p,wood,w*.32,.07,d*.44,w*.23,.14,.04);
    if(pilot){
-    const layout=seatLayout(kind,space.id);layout.forEach((seat,j)=>{const sx=seat.x*w,sz=seat.z*d;chair(p,sx,sz,s,seat.angle,space.id,j+1);if(['computers','quiet'].includes(kind)){const dz=seat.angle?-.15:.15;table(p,sx,sz+dz*d,s*.95,s*.65,s*.85);if(kind!=='quiet'){b(p,ink,sx,s*1.38,sz+dz*d,s*.7,s*.48,.035);b(p,glass,sx,s*1.38,sz+dz*d+.022,s*.59,s*.36,.01);b(p,white,sx,s*.91,sz+dz*d+s*.17,s*.55,.02,s*.16);}else{b(p,leaf,sx,s*1.15,sz+dz*d+s*.3,s*.95,s*.6,.04);c(p,ink,sx+s*.25,s*1.1,sz+dz*d,.025,s*.5,.025);c(p,white,sx+s*.25,s*1.37,sz+dz*d,s*.19,.05,s*.19);}}});
+    const layout=seatLayout(kind,space.id);layout.forEach(seat=>{const sx=seat.x*w,sz=seat.z*d;chair(p,sx,sz,s,seat.angle,space.id);if(['computers','quiet'].includes(kind)){const dz=seat.angle?-.15:.15;table(p,sx,sz+dz*d,s*.95,s*.65,s*.85);if(kind!=='quiet'){b(p,ink,sx,s*1.38,sz+dz*d,s*.7,s*.48,.035);b(p,glass,sx,s*1.38,sz+dz*d+.022,s*.59,s*.36,.01);b(p,white,sx,s*.91,sz+dz*d+s*.17,s*.55,.02,s*.16);}else{b(p,leaf,sx,s*1.15,sz+dz*d+s*.3,s*.95,s*.6,.04);c(p,ink,sx+s*.25,s*1.1,sz+dz*d,.025,s*.5,.025);c(p,white,sx+s*.25,s*1.37,sz+dz*d,s*.19,.05,s*.19);}}});
     if((kind==='team'&&space.id!=='f4-s36')||kind==='lecture'){table(p,0,0,w*.76,d*.3,s*.9);for(let j=0;j<3;j++)b(p,j%2?coral:white,(j-1)*w*.18,s*.94,0,w*.12,.015,d*.13);poster(p,w*.1,-d*.41,w*.5);}
     if(space.id==='f4-s36'){for(const x of [-w*.24,w*.24]){c(p,wood,x,.21,0,w*.15,.06,d*.2);b(p,white,x,.26,0,w*.1,.02,d*.12);}shelf(p,0,-d*.4,w*.65,.6);}
     if(space.id==='f4-s13'){for(const x of [-w*.16,w*.16]){b(p,glass,x,.6,0,.055,1.2,d*.65);}for(const z of [-d*.23,d*.23])table(p,0,z,w*.23,d*.24,.3);}
@@ -93,13 +103,11 @@ export function createMaquetteProps({campus,box,material,track,textures}){
   });return root;
  }
  const floors=new Map();for(const [n,f] of campus.floors)floors.set(n,furnish(f,n));
- const roomShowcases=new Map(),showcaseSeats=new Map(),showcaseRooms=new Map();activeSeats=showcaseSeats;activeRoomProps=showcaseRooms;
+ const roomShowcases=new Map();activeRoomProps=new Map();
  for(const space of campus.floors.get(4).spaces.filter(s=>pilotRoomBySpace(s.id))){const authored={...space,polygon:[[-4,-3.5],[4,-3.5],[4,3.5],[-4,3.5]],center:[0,0]},root=furnish({...campus.floors.get(4),spaces:[authored]},4,true);const color=space.id==='f4-s31'?leaf:space.id==='f4-s39'?glass:wood;const slab=new THREE.Mesh(box,color);slab.position.y=-.15;slab.scale.set(8.4,.35,7.4);root.add(slab);roomShowcases.set(space.id,root);}
- activeSeats=seats;activeRoomProps=roomProps;
- const selectedMaterial=material({color:0xffd578,emissive:0x765319,emissiveIntensity:.14,roughness:.7});let seatSelection={spaceId:null,seatIds:new Set()};
  const consolidated=new Map();
  for(const [parent,map] of batches){let root=parent;while(root.parent)root=root.parent;root.updateMatrixWorld(true);if(!consolidated.has(root))consolidated.set(root,new Map());const target=consolidated.get(root);for(const [key,batch] of map){if(!target.has(key))target.set(key,{geo:batch.geo,mat:batch.mat,items:[]});for(const item of batch.items){let owner=parent;while(owner&&!owner.userData.spaceId)owner=owner.parent;target.get(key).items.push({...item,parentMatrix:parent.matrixWorld.clone(),spaceId:owner?.userData.spaceId});}}}
  for(const [parent,map] of consolidated)for(const {geo,mat,items} of map.values()){const mesh=new THREE.InstancedMesh(geo,mat,items.length),dummy=new THREE.Object3D();items.forEach((it,i)=>{dummy.position.set(it.x,it.y,it.z);dummy.rotation.set(0,it.ry,0);dummy.scale.set(it.w,it.h,it.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix.premultiply(it.parentMatrix));});mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);batchMeshes.push({mesh,items,matrices:items.map((_,i)=>{const m=new THREE.Matrix4();mesh.getMatrixAt(i,m);return m;})});}
 
- return {floors,seats,roomProps,roomShowcases,showcaseSeats,setVisible(ids,focusId=null){const zero=new THREE.Matrix4().makeScale(0,0,0);for(const {mesh,items,matrices} of batchMeshes){items.forEach((item,i)=>mesh.setMatrixAt(i,(focusId?item.spaceId!==focusId:item.spaceId&&!ids.has(item.spaceId))?zero:matrices[i]));mesh.instanceMatrix.needsUpdate=true;}},setSeatSelection(spaceId,ids){seatSelection={spaceId,seatIds:new Set(ids||[])};},setAvailability(data,selected){for(const [id,items] of [...seats,...showcaseSeats]){const status=data.get(id);for(const seat of items){const busy=status?.occupied?.has(seat.seatId);seat.mesh.material=seat.back.material=busy?ink:seatSelection.spaceId===id&&seatSelection.seatIds.has(seat.seatId)?selectedMaterial:seat.baseMaterial;}}},dispose(){for(const parent of consolidated.keys())parent.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
+ return {floors,roomProps,roomShowcases,setVisible(ids,focusId=null){const zero=new THREE.Matrix4().makeScale(0,0,0);for(const {mesh,items,matrices} of batchMeshes){items.forEach((item,i)=>mesh.setMatrixAt(i,(focusId?item.spaceId!==focusId:item.spaceId&&!ids.has(item.spaceId))?zero:matrices[i]));mesh.instanceMatrix.needsUpdate=true;}},dispose(){for(const parent of consolidated.keys())parent.traverse(o=>{if(o.isInstancedMesh)o.dispose();});}};
 }

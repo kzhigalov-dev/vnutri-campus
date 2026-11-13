@@ -5,9 +5,7 @@ import {
   getEmailJSConfig,
   saveEmailJSConfig,
   validateContactPayload,
-  formatContactTemplateParams,
-  formatBookingTemplateParams,
-  CONFIG_STORAGE_KEY
+  formatContactTemplateParams
 } from '../public/js/emailjs-config.js';
 
 test('validateContactPayload catches empty and invalid fields', () => {
@@ -54,27 +52,6 @@ test('formatContactTemplateParams formats data for EmailJS templates', () => {
   assert.equal(params.message, 'Будет ли занятие в этой аудитории?');
   assert.equal(params.date, '4 ноября 2026, 23:00 (МСК)');
   assert.equal(params.source, 'СПбГУПТД · Вознесенский, 44–46');
-});
-
-test('formatBookingTemplateParams generates readable email parameters', () => {
-  const booking = {
-    id: 'abc123xyz',
-    roomId: 'room-4',
-    roomName: 'Читальный зал',
-    roomNumber: '459',
-    date: '2026-11-05',
-    start: 13,
-    hours: 2,
-    seatIds: [1, 2]
-  };
-
-  const params = formatBookingTemplateParams(booking, 'student@sutd.ru');
-  assert.equal(params.email, 'student@sutd.ru');
-  assert.equal(params.booking_id, 'ABC123');
-  assert.equal(params.time, '13:00–15:00');
-  assert.equal(params.seats, '1, 2');
-  assert.ok(params.message.includes('Бронь №ABC123'));
-  assert.ok(params.message.includes('Читальный зал'));
 });
 
 test('getEmailJSConfig and saveEmailJSConfig manage persistence', () => {

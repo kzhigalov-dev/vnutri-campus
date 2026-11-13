@@ -1,5 +1,5 @@
 import {roomPlacements} from './room-placements.js';
-import {escapeHTML as e} from './email-template.js';
+import {escapeHTML as e} from './escape-html.js';
 import {searchRoom} from './room-search.js';
 const search=document.getElementById('directory-search'),list=document.getElementById('directory-list');
 const statuses={floor_explicit:'4-й этаж указан в документе',address_documented:'Адрес найден; положение уточняется',conflicting:'Источники расходятся',historical:'Историческое упоминание 2021 года',needs_verification:'Требуется уточнение',overlapping_assignments:'Несколько назначений в источниках'};

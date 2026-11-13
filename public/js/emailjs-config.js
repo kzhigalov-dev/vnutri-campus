@@ -113,33 +113,3 @@ export function formatContactTemplateParams({ name, email, subject, room, messag
     source: 'СПбГУПТД · Вознесенский, 44–46',
   };
 }
-
-/**
- * Формирование параметров шаблона для отправки подтверждения бронирования через EmailJS
- */
-export function formatBookingTemplateParams(booking, toEmail) {
-  const roomName = booking.roomName || booking.roomNumber || booking.roomId || 'Место для работы';
-  const startHour = Number(booking.start) || 0;
-  const hours = Number(booking.hours) || 1;
-  const time = `${String(startHour).padStart(2, '0')}:00–${String(startHour + hours).padStart(2, '0')}:00`;
-  const bookingId = (booking.id || '').slice(0, 6).toUpperCase();
-
-  const textSummary = `Бронь №${bookingId}\nАудитория: ${roomName}\nДата: ${booking.date}\nВремя: ${time} (Москва)\nМеста: ${(booking.seatIds || []).join(', ')}\nТариф: Бесплатно`;
-
-  return {
-    name: 'Студент',
-    user_name: 'Студент',
-    email: String(toEmail || '').trim(),
-    user_email: String(toEmail || '').trim(),
-    reply_to: String(toEmail || '').trim(),
-    subject: `Бронь №${bookingId} · внутри. СПбГУПТД`,
-    title: `Бронь №${bookingId}`,
-    room: roomName,
-    date: booking.date,
-    time,
-    seats: (booking.seatIds || []).join(', '),
-    booking_id: bookingId,
-    message: textSummary,
-    source: 'внутри. — СПбГУПТД · Вознесенский, 44–46',
-  };
-}

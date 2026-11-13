@@ -1,9 +1,8 @@
 import {demoClasses, nextClass, routeLink} from './campus-days-model.js?v=20261112-polish';
 import {buildingDirectionsLink} from './campus-buildings.js?v=20261112-polish';
-import {loadBookings, todayMoscow} from './model.js';
-import {pilotRoomById, pilotDisplayNumber} from './pilot-spaces.js';
+import {todayMoscow} from './moscow-date.js';
 import {readSchedule,readScheduleFile,scheduleDays,SCHEDULE_STORAGE_KEY} from './local-schedule.js?v=20261112-schedule';
-import {escapeHTML as e} from './email-template.js';
+import {escapeHTML as e} from './escape-html.js';
 
 const $ = id => document.getElementById(id);
 const dateLabel=new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -92,14 +91,3 @@ reset.addEventListener('click',()=>{
   }
   renderSchedule();
 });
-
-const today=todayMoscow();
-const result = loadBookings({getItem: key => localStorage.getItem(key)}, today);
-const bookings = result.bookings.filter(item => item.date === today).sort((a, b) => a.start - b.start);
-if (result.error) $('booking-list').textContent = result.error;
-else if (!bookings.length) $('booking-list').innerHTML = '<div class="empty">На сегодня учебных броней нет. <a href="./index.html">Выбрать место на карте →</a></div>';
-else $('booking-list').innerHTML = bookings.map(item => {
-  const room = pilotRoomById(item.roomId);
-  const time = hour => `${String(hour).padStart(2, '0')}:00`;
-  return `<article class="booking-row"><div><strong>${time(item.start)}–${time(item.start + item.hours)} · ${room.name}</strong><p>Аудитория ${pilotDisplayNumber(room)} · места ${item.seatIds.join(', ')}</p></div><a href="${routeLink(location.href, room.spaceId)}">Маршрут →</a></article>`;
-}).join('');

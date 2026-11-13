@@ -1,2 +1,15 @@
 <!doctype html>
-<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бронирование — внутри.</title><script>const target=new URL('./index.html',location.href);target.search=location.search;target.hash=location.hash;location.replace(target.href);</script><p>Бронирование теперь на карте. <a href="./index.html#bookings">Открыть карту и мои брони</a></p></html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Карта кампуса — внутри.</title>
+<script>
+const target=new URL('./index.html',location.href);
+target.search=location.search;
+if(location.hash!=='#bookings')target.hash=location.hash;
+location.replace(target.href);
+</script>
+</head>
+<body><p><a href="./index.html">Открыть карту кампуса</a></p></body>
+</html>

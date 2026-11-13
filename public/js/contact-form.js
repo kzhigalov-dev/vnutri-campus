@@ -1,10 +1,8 @@
 import {
   getEmailJSConfig,
-  saveEmailJSConfig,
   validateContactPayload,
-  formatContactTemplateParams,
-  formatBookingTemplateParams
-} from './emailjs-config.js';
+  formatContactTemplateParams
+} from './emailjs-config.js?v=20261113-navigation';
 
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   '&': '&amp;',
@@ -225,55 +223,5 @@ if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', initContactForm);
   } else {
     initContactForm();
-  }
-}
-
-/**
- * Отправка подтверждения бронирования на Email через EmailJS
- */
-export async function sendBookingNotification(booking, toEmail) {
-  const config = getEmailJSConfig();
-  if (!config.publicKey || !config.serviceId || !config.templateId) {
-    return {
-      success: false,
-      reason: 'no_config',
-      message: 'Ключи EmailJS не настроены в файле public/js/emailjs-config.js.'
-    };
-  }
-  if (typeof window.emailjs === 'undefined') {
-    return {
-      success: false,
-      reason: 'no_sdk',
-      message: 'Библиотека EmailJS ещё не загрузилась.'
-    };
-  }
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!toEmail || !emailPattern.test(toEmail)) {
-    return {
-      success: false,
-      reason: 'invalid_email',
-      message: 'Укажите корректный адрес электронной почты.'
-    };
-  }
-
-  const templateParams = formatBookingTemplateParams(booking, toEmail);
-
-  try {
-    window.emailjs.init({ publicKey: config.publicKey });
-    await window.emailjs.send(
-      config.serviceId,
-      config.templateId,
-      templateParams,
-      config.publicKey
-    );
-    return { success: true };
-  } catch (error) {
-    console.error('EmailJS booking error:', error);
-    return {
-      success: false,
-      reason: 'send_error',
-      message: error?.text || error?.message || 'Не удалось отправить подтверждение бронирования.'
-    };
   }
 }
